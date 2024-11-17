@@ -5,3 +5,4 @@ pre_processing/
 *.Rhistory
 .vscode/
 .Rproj.user/
+..gitignore.un~
