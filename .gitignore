@@ -1,0 +1,7 @@
+data/
+old/
+pre_processing/
+*.RData
+*.Rhistory
+.vscode/
+.Rproj.user/
