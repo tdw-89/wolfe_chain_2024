@@ -2,8 +2,9 @@ using Serialization
 using PlotlyJS
 
 save_plots = false
-x_tick_font = attr(family="Times New Roman", size=32)
-y_tick_font = attr(family="Times New Roman", size=32)
+box_plots = true
+x_tick_font = attr(family="Times New Roman", size=26)
+y_tick_font = attr(family="Times New Roman", size=26)
 title_font_size = 30
 x1_vals = [collect(-400:100:-100)...]
 x2_vals = [collect(20:20:80)...]
@@ -21,14 +22,14 @@ tes_expr_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_expr
 bar_expr = deserialize(joinpath(ser_data_dir, "bar_plots_expr.jls"))
 
 # dS enrichment plots:
-tss_id_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS.jls"))
-body_id_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS.jls"))
-tes_id_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"))
-bar_id = deserialize(joinpath(ser_data_dir, "bar_plots_dS.jls"))
-tss_id_enrich_human = deserialize(joinpath(ser_data_dir, "human_tss_enrich_plots_dS.jls"))
-body_id_enrich_human = deserialize(joinpath(ser_data_dir, "human_body_enrich_plots_dS.jls"))
-tes_id_enrich_human = deserialize(joinpath(ser_data_dir, "human_tes_enrich_plots_dS.jls"))
-bar_id_human = deserialize(joinpath(ser_data_dir, "human_bar_plots_dS.jls"))
+tss_dS_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS.jls"))
+body_dS_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS.jls"))
+tes_dS_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"))
+bar_dS = deserialize(joinpath(ser_data_dir, "bar_plots_dS.jls"))
+tss_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tss_enrich_plots_dS.jls"))
+body_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_body_enrich_plots_dS.jls"))
+tes_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tes_enrich_plots_dS.jls"))
+bar_dS_human = deserialize(joinpath(ser_data_dir, "human_bar_plots_dS.jls"))
 
 sample_names = ["K27ac", 
                 "K4me3", 
@@ -51,7 +52,7 @@ for i in eachindex(sample_names)
     add_trace!(fig, tss_expr_enrich[1][i], row=1, col=1)
     add_trace!(fig, body_expr_enrich[1][i], row=1, col=2)
     add_trace!(fig, tes_expr_enrich_ends[1][i], row=1, col=3)
-    add_trace!(fig, bar_expr[i], row=1, col=4)
+    add_trace!(fig, box_plots ? bar_expr[i].plot.data[1] : bar_expr[i], row=1, col=4)
     relayout!(fig, yaxis=attr(tickfont=y_tick_font, 
                               title="log(TPM + 0.5)", 
                               titlefont=attr(family = "Times New Roman", 
@@ -68,10 +69,10 @@ for i in eachindex(sample_names)
                             showticklabels=false))
 
     # dS enrichment plots:
-    add_trace!(fig, tss_id_enrich[1][i], row=2, col=1)
-    add_trace!(fig, body_id_enrich[1][i], row=2, col=2)
-    add_trace!(fig, tes_id_enrich_ends[1][i], row=2, col=3)
-    add_trace!(fig, bar_id[i], row=2, col=4)
+    add_trace!(fig, tss_dS_enrich[1][i], row=2, col=1)
+    add_trace!(fig, body_dS_enrich[1][i], row=2, col=2)
+    add_trace!(fig, tes_dS_enrich_ends[1][i], row=2, col=3)
+    add_trace!(fig, box_plots ? bar_dS[i].plot.data[1] : bar_dS[i], row=2, col=4)
     relayout!(fig, 
                 yaxis5=attr(tickfont=y_tick_font, 
                                title="𝑑𝑆", 
@@ -129,12 +130,12 @@ for i in eachindex(sample_names)
         for val in x2_vals],
         [   # Vertical lines for subplots 3 & 6
         (type = "line",
-         x0 = val, 
-         x1 = val, 
-         y0 = 0, 
-         y1 = 1, 
-         xref = "x3", 
-         yref = "paper", 
+         x0 = val,
+         x1 = val,
+         y0 = 0,
+         y1 = 1,
+         xref = "x3",
+         yref = "paper",
          line = (color = line_color, 
                  dash = line_type))
         for val in x3_vals]
@@ -161,10 +162,10 @@ fig_h = make_subplots(
 );
 
 # dS enrichment plots:
-add_trace!(fig_h, tss_id_enrich_human[1][1], row=1, col=1)
-add_trace!(fig_h, body_id_enrich_human[1][1], row=1, col=2)
-add_trace!(fig_h, tes_id_enrich_human[1][1], row=1, col=3)
-add_trace!(fig_h, bar_id_human[1], row=1, col=4)
+add_trace!(fig_h, tss_dS_enrich_human[1][1], row=1, col=1)
+add_trace!(fig_h, body_dS_enrich_human[1][1], row=1, col=2)
+add_trace!(fig_h, tes_dS_enrich_human[1][1], row=1, col=3)
+add_trace!(fig_h, box_plots ? bar_dS_human[1].plot.data[1] : bar_dS_human[1], row=1, col=4)
 relayout!(fig_h, yaxis=attr(tickfont=y_tick_font, 
                             title="𝑑𝑆", 
                             titlefont=attr(family = "Times New Roman", 
@@ -232,9 +233,12 @@ relayout!(fig_h, shapes = reduce(vcat,
     ]
 ))
 
-display(fig_h)
+
 
 if save_plots
     savefig(fig_h, joinpath(plot_save_dir, "combined_plot_H3K9me3_dS_human.html"))
+
+else
+    display(fig_h)
 
 end

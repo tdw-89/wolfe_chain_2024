@@ -21,98 +21,57 @@ if !@isdefined FLOAT_RE
     const FLOAT_RE = r"[0-9]+\.[0-9]+"
     const LBOUND_RE = r"[\[(]{1}"
     const UBOUND_RE = r"[\])]{1}"
+    const QUANT_RANGE_RE = r"^.*(?<lbound>[\[(]{1})\s*(?<lval>[\-0-9]+\.[0-9]+)\s*,\s*(?<uval>[\-0-9]+\.[0-9]+)\s*(?<ubound>[\])]{1})$"
 end
+
+const RANGE_PRECISION = 2  # Precision for rounding quantile range values
 
 include("misc_utils.jl")
 
-function parse_quantile(q::String; digs::Int=3)
-    lbound_bracket = match(LBOUND_RE, q).match
-    ubound_bracket = match(UBOUND_RE, q).match
-    vals = findall(FLOAT_RE, q)
-    lbound_val = string(round(parse(Float64, q[vals[1]]), digits=digs))
-    ubound_val = string(round(parse(Float64, q[vals[2]]), digits=digs))
-    return lbound_bracket * lbound_val * ", " * ubound_val * ubound_bracket
+function parse_quantile(q::String; digs::Int=RANGE_PRECISION)
+    mat = match(QUANT_RANGE_RE, q)
+    if mat === nothing
+        @warn "Warning: label '$q' does not match the expected quantile range format. Keeping it as is."
+        return q
+    end
+
+    lbound = mat["lbound"]
+    lval = round(parse(Float64, mat["lval"]), digits=digs)
+    uval = round(parse(Float64, mat["uval"]), digits=digs)
+    ubound = mat["ubound"]
+    return lbound * lval * ", " * uval * ubound
 
 end
 
 parse_quantile(quant_labels::Vector{String}; digs::Int=3) = [parse_quantile(q, digs=digs) for q in quant_labels]
 
-function parsequantrange(quant_labels::Vector{String})
+function sortNparsequantrange(quant_labels::Vector{String}; digs::Int=RANGE_PRECISION)
 
     sorted_labels = sort(quant_labels, lt = natural)
     ret_labels = String[]
 
     for label in sorted_labels
 
-        temp_str = ""
-        i = 1
-
-        while label[i] != '['
-
-            i += 1
+        mat = match(QUANT_RANGE_RE, label)
+        if mat === nothing
+            push!(ret_labels, label)  # If it doesn't match the range pattern, show a warning
+            @warn "Warning: label '$label' does not match the expected quantile range format. Keeping it as is."
+            continue
         end
 
-        temp_str *= label[i]
-
-        j = i + 1
-
-        while label[j] != '.'
-
-            temp_str *= label[j]
-            j += 1
-        end
-
-        temp_str *= '.'
-        k = j + 1
-
-        while label[k] != ',' && k - j <= 2
-
-            temp_str *= label[k]
-            k += 1
-        end
-
-        while label[k] != ','
-
-            k += 1
-        end
-
-        temp_str *= ", "
-
-        m = k + 2
-
-        while label[m] != '.'
-
-            temp_str *= label[m]
-            m += 1
-        end
-
-        temp_str *= '.'
-        n = m + 1
-
-        while label[n] != ']' && label[n] != ')' && n - m <= 2
-
-            temp_str *= label[n]
-            n += 1
-        end
-
-        while label[n] != ']' && label[n] != ')'
-
-            n += 1
-        end
-
-        if label[n] == ')'
-
-            temp_str *= ')'
-        else
-
-            temp_str *= ']'
-        end
+        lbound = mat["lbound"]
+        ubound = mat["ubound"]
+        lval = round(parse(Float64, mat["lval"]), digits=digs)
+        uval = round(parse(Float64, mat["uval"]), digits=digs)
+        temp_str = string(lbound, lval, ", ", uval, ubound)
 
         push!(ret_labels, temp_str)
     end
 
     return ret_labels
 end
+
+
 
 """
 NOTES: 
@@ -468,7 +427,6 @@ function to_percent(signal_vec::Vector{R}) where R <: Union{Real}
 
     signal_interp = interpolate((1:length(signal_vec),), signal_vec, Gridded(Linear()))
     new_inds = range(1, length(signal_vec), 100)
-    # @assert length(new_inds) == 100 # DEBUG REMOVE
     return signal_interp[new_inds]
 end
 
@@ -600,7 +558,8 @@ function plot_enrich_region(paralog_df::DataFrame, gene_list::Vector{Gene}, samp
 
                 gene_ds_quantile_labels = cut(paralog_df[!,ind_var_col], n_quantiles)
                 gene_ds_quantiles = levelcode.(gene_ds_quantile_labels)
-                quantile_legend = parsequantrange(unique(gene_ds_quantile_labels))
+                quantile_legend = sortNparsequantrange(unique(gene_ds_quantile_labels))
+                
                 
             catch ArgumentError
 
@@ -628,9 +587,6 @@ function plot_enrich_region(paralog_df::DataFrame, gene_list::Vector{Gene}, samp
             # 'gene_list'. 
             gene_pair_inds = findall(gene_ds_quantiles .== d)
             # shuffle!(gene_pair_inds)
-
-            # q_1 = Tuple{String, String}[] # DEBUG REMOVE
-            # q_2 = Tuple{String, String}[] # DEBUG REMOVE
             
             qual_gene_ind_pairs = Vector{Tuple{Int, Int}}()
             # max_pairs = length(gene_pair_inds)
@@ -665,7 +621,6 @@ function plot_enrich_region(paralog_df::DataFrame, gene_list::Vector{Gene}, samp
 
                 gene_pos_count = mean(reduce(hcat, gene_pos_count), dims=2)[:,1]
                 paralog_pos_count = mean(reduce(hcat, paralog_pos_count), dims=2)[:,1]
-                # return gene_pos_count, paralog_pos_count, positional_count_mat # DEBUG REMOVE
                 positional_count_mat[:,d] .= positional_count_mat[:,d] .+ mean([gene_pos_count paralog_pos_count], dims=2)[:,1]
 
             end
@@ -763,7 +718,7 @@ function plot_enrich_percent(paralog_df::DataFrame, gene_list::Vector{Gene}, sam
 
                 gene_ds_quantile_labels = cut(paralog_df[!,ind_var_col], n_quantiles)
                 gene_ds_quantiles = levelcode.(gene_ds_quantile_labels)
-                quantile_legend = parsequantrange(unique(gene_ds_quantile_labels))
+                quantile_legend = sortNparsequantrange(unique(gene_ds_quantile_labels))
                 
             catch ArgumentError
 
@@ -791,9 +746,6 @@ function plot_enrich_percent(paralog_df::DataFrame, gene_list::Vector{Gene}, sam
             # 'gene_list'. 
             gene_pair_inds = findall(gene_ds_quantiles .== d)
             # shuffle!(gene_pair_inds)
-
-            # q_1 = Tuple{String, String}[] # DEBUG REMOVE
-            # q_2 = Tuple{String, String}[] # DEBUG REMOVE
             
             qual_gene_ind_pairs = Vector{Tuple{Int, Int}}()
             # max_pairs = length(gene_pair_inds)
@@ -828,7 +780,6 @@ function plot_enrich_percent(paralog_df::DataFrame, gene_list::Vector{Gene}, sam
 
                 gene_pos_count = to_percent(mean(reduce(hcat, gene_pos_count), dims=2)[:,1])
                 paralog_pos_count = to_percent(mean(reduce(hcat, paralog_pos_count), dims=2)[:,1])
-                # return gene_pos_count, paralog_pos_count, positional_count_mat # DEBUG REMOVE
                 positional_count_mat[:,d] .= positional_count_mat[:,d] .+ mean([gene_pos_count paralog_pos_count], dims=2)[:,1]
 
             end
@@ -922,7 +873,7 @@ function plot_enrich_expr_region(expr_df::DataFrame, gene_list::Vector{Gene}, sa
             try
                 gene_expr_quantile_labels = cut(expr_df.Avg, n_quantiles)
                 gene_expr_quantiles = levelcode.(gene_expr_quantile_labels)
-                quantile_legend = parsequantrange(unique(gene_expr_quantile_labels))
+                quantile_legend = sortNparsequantrange(unique(gene_expr_quantile_labels))
                 
             catch ArgumentError
                 n_quantiles -= 1
@@ -1048,7 +999,7 @@ function plot_enrich_expr_percent(expr_df::DataFrame, gene_list::Vector{Gene}, s
             try
                 gene_expr_quantile_labels = cut(expr_df.Avg, n_quantiles)
                 gene_expr_quantiles = levelcode.(gene_expr_quantile_labels)
-                quantile_legend = parsequantrange(unique(gene_expr_quantile_labels))
+                quantile_legend = sortNparsequantrange(unique(gene_expr_quantile_labels))
                 
             catch ArgumentError
                 n_quantiles -= 1
@@ -1157,24 +1108,31 @@ function plot_enrich_expr_percent(expr_df::DataFrame, gene_list::Vector{Gene}, s
     end
 end
 
+"""
+    Plot the average signal for each gene pair in the specified region across the samples in `sample_inds`.
+    The average signal is calculated as the log2 of the ratio of the average signal for each gene pair to the average signal given.
+    The function will also plot the average signal for each quantile of ds.
+    The function will return a vector of figures if return_figs is true, otherwise it will display the figures.
+"""
 function plot_bar(paralog_df::DataFrame, 
-                  gene_list::Vector{Gene}, 
-                  sample_ind_groups::Vector{T}, 
-                  region_list::Vector{GeneRange}, 
-                  global_means::Vector{Float64}, 
+                  gene_list::Vector{Gene},
+                  sample_ind_groups::Vector{T},
+                  region_list::Vector{GeneRange},
+                  global_means::Vector{Float64},
                   y_range::Union{Nothing, Vector{Int}},
                   return_figs::Bool=true,
                   horizontal::Bool=false,
                   save_plots::Bool=false,
+                  box_plots::Bool=true,
                   ind_var_col=3) where T <: Union{Tuple, Vector{Int}}
     
     @assert length(region_list) == length(global_means) == length(sample_ind_groups) "length of 'region_list', 'global_means', and 'sample_ind_groups' must be equal."
     
-    fig_vec = GenericTrace[]
+    fig_vec = []
 
     p_values = []
 
-    means_vecs = Vector{Vector{Vector{Float64}}}()# DEBUG REMOVE
+    means_vecs = Vector{Vector{Vector{Float64}}}() # DEBUG REMOVE
 
     for (r, sample_inds) in enumerate(sample_ind_groups)
 
@@ -1192,7 +1150,7 @@ function plot_bar(paralog_df::DataFrame,
 
                 gene_ds_quantile_labels = cut(paralog_df[!,ind_var_col], n_quantiles)
                 gene_ds_quantiles = levelcode.(gene_ds_quantile_labels)
-                quantile_legend = parsequantrange(unique(gene_ds_quantile_labels))
+                quantile_legend = sortNparsequantrange(unique(gene_ds_quantile_labels))
                 
             catch ArgumentError
 
@@ -1258,7 +1216,8 @@ function plot_bar(paralog_df::DataFrame,
 
                 # Add the average of the two to the vector of average counts for the current quantile
                 if !any(ismissing.(gene_sigs)) && !any(ismissing.(paralog_sigs))
-                    push!(pair_means[d], mean([pair_pos_count_gene, pair_pos_count_paralog]) / global_means[r])
+                    pair_average = mean([pair_pos_count_gene, pair_pos_count_paralog])
+                    push!(pair_means[d], pair_average/global_means[r])
                 
                 else
                     @warn "skipping $(gene_list[qual_gene_ind_pairs[i][1]].id) and $(gene_list[qual_gene_ind_pairs[i][2]].id)
@@ -1286,7 +1245,27 @@ function plot_bar(paralog_df::DataFrame,
             push!(quant_ranges, quant_range)
         end
 
-        if isnothing(y_range)
+        if box_plots
+            vals = []
+            quantile_nums = []
+            for (i, mean_dist) in enumerate(pair_means)
+                if !isempty(mean_dist)
+                    vals = vcat(vals, mean_dist)
+                    quantile_nums = vcat(quantile_nums, fill(i, length(mean_dist)))
+                end
+            end
+            # Create a box plot for the values across quantiles
+            temp_df = DataFrame(
+                :X => quantile_nums,
+                :Y => vals
+            )
+            if horizontal
+                bar_plt = plot(temp_df, x=:Y, y=:X, kind="box", orientation = "h")
+            else
+                bar_plt = plot(temp_df, x=:X, y=:Y, kind="box")
+            end
+
+        elseif isnothing(y_range)
             bar_plt = bar(
                 x=[mean(pair_mean_dist) for pair_mean_dist in pair_means],
                 y=quant_ranges,
@@ -1318,7 +1297,7 @@ function plot_bar(paralog_df::DataFrame,
         end
 
         if save_plots
-            savefig(plot(bar_plt), joinpath(plot_save_dir, "$(sample_name)_region_enrichment_vs_ds_$(n_quantiles)-quantile_average_bar.html"))
+            savefig(box_plots ? bar_plt : plot(bar_plt), joinpath(plot_save_dir, "$(sample_name)_region_enrichment_vs_ds_$(n_quantiles)-quantile_average_bar.html"))
 
         end
 
@@ -1350,12 +1329,13 @@ function plot_bar_expr(expr_df::DataFrame,
                   y_range::Union{Nothing, Vector{Int}},
                   return_figs::Bool=false,
                   horizontal::Bool=false,
-                  save_plots::Bool=false) where T <: Union{Tuple, Vector{Int}}
+                  save_plots::Bool=false,
+                  box_plots::Bool=true) where T <: Union{Tuple, Vector{Int}}
     
     @assert length(region_list) == length(global_means) == length(sample_ind_groups) "length of 'region_list', 'global_means', and 'sample_ind_groups' must be equal."
 
     if return_figs
-        fig_vec = GenericTrace[]
+        fig_vec = []
 
     end
 
@@ -1369,15 +1349,11 @@ function plot_bar_expr(expr_df::DataFrame,
     quantile_legend = String[]
 
     while isempty(gene_expr_quantile_labels) && n_quantiles > 1
-
         try
-
             gene_expr_quantile_labels = cut(expr_df.Avg, n_quantiles)
             gene_expr_quantiles = levelcode.(gene_expr_quantile_labels)
-            quantile_legend = parsequantrange(unique(gene_expr_quantile_labels))
-            
+            quantile_legend = sortNparsequantrange(unique(gene_expr_quantile_labels))
         catch ArgumentError
-
             n_quantiles -= 1
             gene_expr_quantile_labels = String[]
             gene_expr_quantiles = Int[]
@@ -1443,7 +1419,26 @@ function plot_bar_expr(expr_df::DataFrame,
             push!(quant_ranges, quant_range)
         end
 
-        if isnothing(y_range)
+        if box_plots
+            vals = []
+            quantile_nums = []
+            for (i, mean_dist) in enumerate(quantile_means)
+                if !isempty(mean_dist)
+                    vals = vcat(vals, mean_dist)
+                    quantile_nums = vcat(quantile_nums, fill(i, length(mean_dist)))
+                end
+            end
+            # Create a box plot for the values across quantiles
+            temp_df = DataFrame(
+                :X => quantile_nums,
+                :Y => vals
+            )
+            if horizontal
+                bar_plt = plot(temp_df, x=:Y, y=:X, kind="box", orientation = "h")
+            else
+                bar_plt = plot(temp_df, x=:X, y=:Y, kind="box")
+            end
+        elseif isnothing(y_range)
             bar_plt = bar(
                 x=[mean(mean_dist) for mean_dist in quantile_means],
                 y=quant_ranges,
@@ -1475,7 +1470,7 @@ function plot_bar_expr(expr_df::DataFrame,
         end
 
         if save_plots
-            savefig(plot(bar_plt), joinpath(plot_save_dir, "$(sample_name)_average_enrichment_vs_expr_$(n_quantiles)-quantile_bar.html"))
+            savefig(box_plots ? bar_plt : plot(bar_plt), joinpath(plot_save_dir, "$(sample_name)_average_enrichment_vs_expr_$(n_quantiles)-quantile_bar.html"))
 
         end
 
@@ -1725,390 +1720,25 @@ function intergenic_dist(ref_genome)
     error("under construction")
 end
 
-
-# TESTS: #
-
-#=
-    # Test data:
-
-test_region = Region(
-        missing,
-        missing,
-        21222,
-        24456,
-        missing,
-        nothing,
-        [BitVector([ones(Bool, 1178); zeros(Bool, 2001); ones(Bool, 56)])],
-        ["Sample1"]
-)
-
-gene_list = [
-    Gene(
-        missing,
-        missing,
-        missing,
-        "TEST1",
-        '+',
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        RNA[],
-        missing,
-        [test_region],
-        missing,
-        22400,
-        24400,
-        nothing,
-        nothing,
-        nothing,
-        ["SAMPLE1"]),
-    Gene(
-        missing,
-        missing,
-        missing,
-        "TEST1",
-        '-',
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        missing,
-        RNA[],
-        missing,
-        [test_region],
-        missing,
-        22400,
-        24400,
-        nothing,
-        nothing,
-        nothing,
-        ["SAMPLE1"])
-]
-
-    # 'getsiginrange':
-
-@assert length(getsiginrange(gene_list[1], GeneRange(TSS(), TES()), 1)) == 2001 
-@assert length(getsiginrange(gene_list[2], GeneRange(TSS(), TES()), 1)) == 2001
-@assert length(getsiginrange(gene_list[1], GeneRange(REGION(), REGION()), 1)) == 3235
-@assert length(getsiginrange(gene_list[2], GeneRange(REGION(), REGION()), 1)) == 3235
-@assert length(getsiginrange(gene_list[1], GeneRange(TSS(), REGION()), 1)) == 2057
-@assert length(getsiginrange(gene_list[2], GeneRange(TSS(), REGION()), 1)) == 3179
-@assert length(getsiginrange(gene_list[1], GeneRange(REGION(), TES()), 1)) == 3179
-@assert length(getsiginrange(gene_list[2], GeneRange(REGION(), TES()), 1)) == 2057
-
-@assert !ismissing(getsiginrange(gene_list[1], GeneRange(TSS(), TES(), -1178, 0)), 1)
-@assert !ismissing(getsiginrange(gene_list[2], GeneRange(TSS(), TES(), -56, 0)), 1)
-@assert ismissing(getsiginrange(gene_list[1], GeneRange(TSS(), TES(), -1179, 0)), 1)
-@assert ismissing(getsiginrange(gene_list[2], GeneRange(TSS(), TES(), -57, 0)), 1)
-@assert !ismissing(getsiginrange(gene_list[1], GeneRange(TSS(), TES(), 0, 56)), 1)
-@assert !ismissing(getsiginrange(gene_list[2], GeneRange(TSS(), TES(), 0, 1178)), 1)
-@assert ismissing(getsiginrange(gene_list[1], GeneRange(TSS(), TES(), 0, 57)), 1)
-@assert ismissing(getsiginrange(gene_list[2], GeneRange(TSS(), TES(), 0, 1179)), 1)
-
-@assert sum(getsiginrange(gene_list[1], GeneRange(REGION(), REGION()), 1)) == 1234
-@assert sum(getsiginrange(gene_list[2], GeneRange(REGION(), REGION()), 1)) == 1234
-@assert sum(getsiginrange(gene_list[1], GeneRange(TSS(), REGION()), 1)) == 56
-@assert sum(getsiginrange(gene_list[2], GeneRange(TSS(), REGION()), 1)) == 1178
-@assert sum(getsiginrange(gene_list[1], GeneRange(REGION(), TES()), 1)) == 1178
-@assert sum(getsiginrange(gene_list[2], GeneRange(REGION(), TES()), 1)) == 56
-
-    # 'siginrange':
-
-@assert siginrange(gene_list[1], GeneRange(TSS(), TES()))
-@assert siginrange(gene_list[2], GeneRange(TSS(), TES()))
-@assert siginrange(gene_list[1], GeneRange(REGION(), REGION()))
-@assert siginrange(gene_list[2], GeneRange(REGION(), REGION()))
-@assert siginrange(gene_list[1], GeneRange(TSS(), REGION()))
-@assert siginrange(gene_list[2], GeneRange(TSS(), REGION()))
-@assert siginrange(gene_list[1], GeneRange(REGION(), TES()))
-@assert siginrange(gene_list[2], GeneRange(REGION(), TES()))
-
-@assert siginrange(gene_list[1], GeneRange(TSS(), TES(), -1178, 0))
-@assert siginrange(gene_list[2], GeneRange(TSS(), TES(), -56, 0))
-@assert !siginrange(gene_list[1], GeneRange(TSS(), TES(), -1179, 0))
-@assert !siginrange(gene_list[2], GeneRange(TSS(), TES(), -57, 0))
-@assert siginrange(gene_list[1], GeneRange(TSS(), TES(), 0, 56))
-@assert siginrange(gene_list[2], GeneRange(TSS(), TES(), 0, 1178))
-@assert !siginrange(gene_list[1], GeneRange(TSS(), TES(), 0, 57))
-@assert !siginrange(gene_list[2], GeneRange(TSS(), TES(), 0, 1179))
-
-=#
-
-#= OLD: ===== 
-
-"""Test if a gene has a peak in the specified region."""
-function siginrange_old1(gene::Gene, sig_range::Int; peak_data::Bool=true)
-
-    gene_start = gene.gene_start
-    gene_end = gene.gene_end
-    region_start = gene.regions[1].region_start
-    region_end = gene.regions[1].region_end
-
-    if peak_data
-
-        if isempty(gene.regions[1].binsignals)
-
-            error("No peak data for gene $(gene.id).")
-        end
-        
-        sig_length = length(gene.regions[1].binsignals[1])
-    else
-
-        if isempty(gene.regions[1].signals)
-
-            error("No count data for gene $(gene.id).")
-        end
-
-        sig_length = length(gene.regions[1].signals[1])
+"""function to get the correlation between enrichment in significant regions and dS"""
+function get_cor(paralog_df::DataFrame, gene_range::GeneRange, sample_inds::Vector{Int}, genome::RefGenome)
+    XS = []
+    YS = []
+    for sample_ind in sample_inds
+        genes = get(genome, collect(paralog_df.GeneID))
+        paralogs = get(genome, collect(paralog_df.ParalogID))
+        enrich_vals_gene = [!siginrange(gene, gene_range) ? missing : mean(getsiginrange(gene, gene_range, sample_ind)) for gene in genes]
+        enrich_vals_paralog = [!siginrange(paralog, gene_range) ? missing : mean(getsiginrange(paralog, gene_range, sample_ind)) for paralog in paralogs]
+        enrich_means = [(!ismissing(pair[1]) && !ismissing(pair[2])) ? mean(pair) : missing for pair in zip(enrich_vals_gene, enrich_vals_paralog)]
+        pairs_filtered = [pair for pair in zip(enrich_means, paralog_df.dS) if !ismissing(pair[1]) && !ismissing(pair[2])]
+        xs = [pair[1] for pair in pairs_filtered]
+        ys = [pair[2] for pair in pairs_filtered]
+        push!(XS, xs)
+        push!(YS, ys)
     end
-    
-    if gene.strand == '+'
-        
-        TSS = gene_start - region_start
-    else
-        
-        TSS = region_end - gene_end
-    end
-    
-    tss_to_end = sig_length - TSS
-    start_to_tss = sig_length - tss_to_end
-    @assert start_to_tss + tss_to_end == sig_length # DEBUG REMOVE?
-
-    if tss_to_end >= sig_range/2 && start_to_tss >= (sig_range/2) - 1
-
-        return true
-    else
-
-        return false
-    end
+    XS = reduce(hcat, XS)
+    YS = reduce(hcat, YS)
+    XS = vec(mean(XS, dims=2))
+    YS = vec(mean(YS, dims=2))
+    return perm_cor_2side(XS, YS)
 end
-
-function siginrange_old2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
-
-    range_start = 1
-    range_stop = 1
-
-    if gene.strand == '+'
-    
-        if typeof(sig_range.range_start) == REGION
-
-            range_start = 1
-        elseif typeof(sig_range.range_start) == TSS
-
-            range_start = gene.gene_start - gene.regions[1].region_start
-        else
-
-            range_start = gene.gene_end - gene.regions[1].region_start
-        end
-
-        if typeof(sig_range.range_stop) == REGION
-
-            range_stop = gene.regions[1].region_end - gene.regions[1].region_start
-
-        elseif typeof(sig_range.range_stop) == TSS
-
-            range_stop = gene.gene_start - gene.regions[1].region_start
-        else
-
-            range_stop = gene.gene_end - gene.regions[1].region_start
-        end
-
-    elseif gene.strand == '-'
-    
-        if typeof(sig_range.range_start) == REGION
-
-            range_start = 1
-        elseif typeof(sig_range.range_start) == TSS
-
-            range_start = gene.regions[1].region_end - gene.gene_end
-        else
-
-            range_start = gene.regions[1].region_end - gene.gene_start
-        end
-
-        if typeof(sig_range.range_stop) == REGION
-
-            range_stop = gene.regions[1].region_end - gene.regions[1].region_start
-
-        elseif typeof(sig_range.range_stop) == TSS
-
-            range_stop = gene.regions[1].region_end - gene.gene_end
-        else
-
-            range_stop = gene.regions[1].region_end - gene.gene_start
-        end
-    else
-
-        error("unrecognized strand $(gene.strand)")
-    end
-
-    range_start += sig_range.start_offset
-    range_stop += sig_range.stop_offset
-
-    return range_start >= 1 && range_stop <= length(gene.regions[1].binsignals[sample_ind])
-end
-
-function getsiginrange_old1(gene::Gene, sample_ind::Int, upstream_lim::Int=1999, downstream_lim::Int=2000; signal_type::String="peak")
-
-    if signal_type == "peak"
-
-        temp_signal = gene.regions[1].binsignals[sample_ind]
-    else
-            
-        temp_signal = gene.regions[1].signals[sample_ind]
-    end
-    
-    sig_length = length(temp_signal)
-    
-    if gene.strand == '+'
-
-        region_start = gene.regions[1].region_start
-        gene_start = gene.gene_start
-        temp_upstream = (gene_start - region_start) - upstream_lim
-        temp_downstream = (gene_start - region_start) + downstream_lim
-
-        if temp_upstream > 0 && temp_downstream <= sig_length
-
-            return temp_signal[temp_upstream:temp_downstream]
-        else
-
-            if temp_upstream <= 0
-
-                @warn("Invalid range for gene $(gene.id). Upstream limit is too large.")
-                return nothing
-            else
-
-                @warn("Invalid range for gene $(gene.id). Downstream limit is too large.")
-                return nothing
-            end
-        end
-    elseif gene.strand == '-'
-
-        region_start = gene.regions[1].region_start
-        gene_end = gene.gene_end
-        temp_upstream = (gene_end - region_start) + upstream_lim
-        temp_downstream = (gene_end - region_start) - downstream_lim
-
-        if temp_downstream > 0 && temp_upstream <= sig_length
-
-            return reverse(temp_signal[temp_downstream:temp_upstream])
-        else
-
-            if temp_downstream <= 0
-
-                @warn("Invalid range for gene $(gene.id). Upstream limit is too large.")
-                return nothing
-            else
-
-                @warn("Invalid range for gene $(gene.id). Downstream limit is too large.")
-                return nothing
-            end
-        end
-    else
-        @warn("Invalid gene strand. Must be '+' or '-'.")
-        return nothing
-    end
-end
-
-function getsiginrange_old2(gene::Gene, sample_ind::Int, gene_range::GeneRange; signal_type::String="peak")
-
-    if sample_ind ∉ 1:length(gene.samples)
-
-        error("Invalid sample index for gene $(gene.id).")
-    end
-
-    range_start = 1
-    range_stop = 1
-
-    if gene.strand == '+'
-    
-        if typeof(gene_range.range_start) == REGION
-
-            range_start = 1
-        elseif typeof(gene_range.range_start) == TSS
-
-            range_start = gene.gene_start - gene.regions[1].region_start
-        else
-
-            range_start = gene.gene_end - gene.regions[1].region_start
-        end
-
-        if typeof(gene_range.range_stop) == REGION
-
-            range_stop = gene.regions[1].region_end - gene.regions[1].region_start
-
-        elseif typeof(gene_range.range_stop) == TSS
-
-            range_stop = gene.gene_start - gene.regions[1].region_start
-        else
-
-            range_stop = gene.gene_end - gene.regions[1].region_start
-        end
-
-    elseif gene.strand == '-'
-    
-        if typeof(gene_range.range_start) == REGION
-
-            range_start = 1
-        elseif typeof(gene_range.range_start) == TSS
-
-            range_start = gene.regions[1].region_end - gene.gene_end
-        else
-
-            range_start = gene.regions[1].region_end - gene.gene_start
-        end
-
-        if typeof(gene_range.range_stop) == REGION
-
-            range_stop = gene.regions[1].region_end - gene.regions[1].region_start
-
-        elseif typeof(gene_range.range_stop) == TSS
-
-            range_stop = gene.regions[1].region_end - gene.gene_end
-        else
-
-            range_stop = gene.regions[1].region_end - gene.gene_start
-        end
-    else
-
-        error("unrecognized strand $(gene.strand)")
-    end
-
-    range_start += gene_range.start_offset
-    range_stop += gene_range.stop_offset
-
-    try
-
-        if signal_type == "peak"
-
-            if gene.strand == '+'
-
-                return gene.regions[1].binsignals[sample_ind][range_start:range_stop]
-            else
-
-                return reverse(gene.regions[1].binsignals[sample_ind])[range_start:range_stop]
-            end
-        else
-
-            if gene.strand == '+'
-
-                return gene.regions[1].signals[sample_ind][range_start:range_stop]
-            else
-
-                return reverse(gene.regions[1].signals[sample_ind])[range_start:range_stop]
-            end
-        end
-    catch BoundsError
-
-        println("region $gene_range for gene $(gene.id) out of bounds.")
-        return missing
-    end
-end
-
-=#

@@ -69,43 +69,43 @@ global_mean = mean([
 ])
 
 # Plot the enrichment
-
-tss_enrich = plot_enrich_region(paralog_data, 
-                                human_ref.genes[2], 
-                                [collect(eachindex(human_ref.genes[2][1].samples))], 
-                                [GeneRange(TSS(), TSS(), -500, -1)], 
-                                fold_change_over_mean=true, 
+tss_enrich = plot_enrich_region(paralog_data,
+                                human_ref.genes[2],
+                                [collect(eachindex(human_ref.genes[2][1].samples))],
+                                [GeneRange(TSS(), TSS(), -500, -1)],
+                                fold_change_over_mean=true,
                                 global_means=[global_mean],
                                 z_min=0,
                                 z_max=4,
                                 return_figs=true)
+
 serialize("./data/julia_serialized/human_tss_enrich_plots_dS.jls", tss_enrich)
 
-body_enrich = plot_enrich_percent(paralog_data, 
-                    human_ref.genes[2], 
-                    [collect(eachindex(human_ref.genes[2][1].samples))], 
-                    fold_change_over_mean=true, 
+body_enrich = plot_enrich_percent(paralog_data,
+                    human_ref.genes[2],
+                    [collect(eachindex(human_ref.genes[2][1].samples))],
+                    fold_change_over_mean=true,
                     global_means=[global_mean],
                     z_min=0,
                     z_max=4,
                     return_figs=true)
 serialize("./data/julia_serialized/human_body_enrich_plots_dS.jls", body_enrich)
 
-tes_enrich = plot_enrich_region(paralog_data, 
-                                human_ref.genes[2], 
-                                [collect(eachindex(human_ref.genes[2][1].samples))], 
-                                [GeneRange(TES(), TES(), 1, 500)], 
-                                fold_change_over_mean=true, 
+tes_enrich = plot_enrich_region(paralog_data,
+                                human_ref.genes[2],
+                                [collect(eachindex(human_ref.genes[2][1].samples))],
+                                [GeneRange(TES(), TES(), 1, 500)],
+                                fold_change_over_mean=true,
                                 global_means=[global_mean],
                                 z_min=0,
                                 z_max=4,
                                 return_figs=true)
 serialize("./data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
 
-bar_plots, p_vals, means_vecs = plot_bar(paralog_data, 
-                    human_ref.genes[2], 
+bar_plots, p_vals, means_vecs = plot_bar(paralog_data,
+                    human_ref.genes[2],
                     [collect(eachindex(human_ref.genes[2][1].samples))],
-                    [GeneRange(REGION(), REGION(), 0, 0)], 
+                    [GeneRange(REGION(), REGION(), 0, 0)],
                     [global_mean],
                     [0,4],
                     true,
@@ -121,6 +121,7 @@ low_ds_paralogs = paralog_data[quantile_vals .<= 10, :]
 has_k9me3 = map(eachrow(low_ds_paralogs)) do row
     gene = get(human_ref, row.GeneID)
     paralog = get(human_ref, row.ParalogID)
+
     if gene === nothing || paralog === nothing
         @warn "Missing gene or paralog: $(row.GeneID) or $(row.ParalogID)"
         return false
@@ -128,7 +129,7 @@ has_k9me3 = map(eachrow(low_ds_paralogs)) do row
 
     gene_enrich = mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
                         for i in eachindex(gene.samples)])
-    paralog_enrich = mean([mean(getsiginrange(paralog, GeneRange(TSS(), TES(), -500, 500), i)) 
+    paralog_enrich = mean([mean(getsiginrange(paralog, GeneRange(TSS(), TES(), -500, 500), i))
                         for i in eachindex(paralog.samples)])
     return [sum(gene_enrich) > 0, sum(paralog_enrich) > 0]
 end

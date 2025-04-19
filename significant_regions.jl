@@ -246,9 +246,13 @@ display(plot([scatter(x=1:length(sigs_top_10_atac), y=mean(sigs_top_10_atac), na
 te_dist_df = CSV.read(te_dist_file, DataFrame)
 
 k27_df = sig_regions(filtered_gene_list, expr_vec, k27_inds, "K27ac")
+k27_mean_cor = mean(k27_df.Cor)
 k4_df = sig_regions(filtered_gene_list, expr_vec, k4_inds, "K4me3")
+k4_mean_cor = mean(k4_df.Cor)
 k9_df = sig_regions(filtered_gene_list, expr_vec, k9me3_inds, "K9me3")
+k9_mean_cor = mean(k9_df.Cor)
 atac_df = sig_regions(filtered_gene_list, expr_vec, atac_inds, "ATAC")
+atac_mean_cor = mean(atac_df.Cor)
 
 sig_region_df = DataFrame("Mark" => ["K27ac", "K4me3", "K9me3", "ATAC"],
                         "Start" => [k27_df.Pos[1], k4_df.Pos[1], k9_df.Pos[1], atac_df.Pos[1]],

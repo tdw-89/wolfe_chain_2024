@@ -126,4 +126,4 @@ function Base.get(genome::RefGenome, gene_ids::Vector{S}) where S <: AbstractStr
     end
 
     return return_list
-end 
+end

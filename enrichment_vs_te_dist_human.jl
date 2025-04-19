@@ -23,7 +23,7 @@ chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chr
 paralog_file = "./data/filtered/human_paralog_info_filt.csv"
 te_dist_file = "./data/te_distance_human_$te_type.csv"
 
-# Dosage sensitivity data: 
+# Dosage sensitivity data:
 significant_overlap_file = "./data/lift_over_data_filtered.csv"
 mismatch_file = "./data/lift_over_data_mismatches.csv"
 

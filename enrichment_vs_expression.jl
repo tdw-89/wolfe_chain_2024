@@ -73,23 +73,6 @@ addtogenes!(ref_genome, peak_data)
 # addtogenes!(ref_genome, peak_data_k9)
 # addtogenes!(ref_genome, peak_data_atac)
 
-# DEBUG REMOVE: #
-# global_averages = (
-#     k4me3 = mean([mean([mean(chrom.signal) for chrom in sample.chroms if chrom.name != "DDB0169550"]) for sample in peak_data.samples if contains(lowercase(sample.name), "k4me3")]),
-#     k27ac = mean([mean([mean(chrom.signal) for chrom in sample.chroms if chrom.name != "DDB0169550"]) for sample in peak_data.samples if contains(lowercase(sample.name), "k27ac")]),
-#     h3 = mean([mean([mean(chrom.signal) for chrom in sample.chroms if chrom.name != "DDB0169550"]) for sample in peak_data.samples if contains(lowercase(sample.name), "h3_")]),
-#     atac = mean([mean([mean(chrom.signal) for chrom in sample.chroms if chrom.name != "DDB0169550"]) for sample in peak_data.samples if contains(lowercase(sample.name), "171031")]),
-#     k9me3 = mean([mean([mean(chrom.signal) for chrom in sample.chroms if chrom.name != "DDB0169550"]) for sample in peak_data.samples if contains(lowercase(sample.name), "k9me3")])
-#     )
-
-# gene_over_global = (
-#     k4me3 = mean([mean([mean(getsiginrange(gene, ind, GeneRange(TSS(), TES(), 0, 0))) for ind in k4me3_inds]) for gene in ref_genome.genes[2]]) / global_averages[:k4me3],
-#     k27ac = mean([mean([mean(getsiginrange(gene, ind, GeneRange(TSS(), TES(), 0, 0))) for ind in k27ac_inds]) for gene in ref_genome.genes[2]]) / global_averages[:k27ac],
-#     h3 = mean([mean([mean(getsiginrange(gene, ind, GeneRange(TSS(), TES(), 0, 0))) for ind in h3_inds]) for gene in ref_genome.genes[2]]) / global_averages[:h3],
-#     k9me3 = mean([mean([mean(getsiginrange(gene, ind, GeneRange(TSS(), TES(), 0, 0))) for ind in k9me3_inds]) for gene in ref_genome.genes[2]]) / global_averages[:k9me3]
-# )
-# END REMOVE #
-
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)
 
@@ -168,7 +151,7 @@ bar_plots, p_vals, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sam
                                                                             GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])), # K4me3
                                                                             GeneRange(TSS(), TSS(), sig_region_df.Start[3], 0), # K9me3
                                                                             GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))], # ATAC
-                                                        global_means_vec, [0,4], true, true)
+                                                        global_means_vec, [0,4], true, true);
 adj_pvals = adjust(pvalue.(p_vals), Bonferroni())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr.json"), means_vecs)
