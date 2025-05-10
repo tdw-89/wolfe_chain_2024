@@ -11,7 +11,7 @@ include("custom_lib/enrichment_utils.jl")
 include("custom_lib/te_utils.jl")
 
 reload_peak_data = false
-te_type = "TE"
+te_type = "DNA"
 
 # Peak files
 # chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
@@ -72,24 +72,25 @@ end
 paralog_ids = vcat(paralog_data.GeneID, paralog_data.ParalogID)
 te_distances = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∉ paralog_ids && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
 te_distances_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ paralog_ids && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
-plot([box(y=te_distances, name="TE Distance", marker_color="blue"), box(y=te_distances_dups, name="TE Distance (Paralogs)", marker_color="red")])
+plot([box(y=te_distances, name="TE Distance", marker_color="blue"), 
+      box(y=te_distances_dups, name="TE Distance (Paralogs)", marker_color="red")])
 
 # What proportion of non-paralog genes overlap a TE vs. paralog genes?
 cont_table = [count(d -> d == 0, te_distances) count(d -> d == 0, te_distances_dups); 
               count(d -> d > 0, te_distances) count(d -> d > 0, te_distances_dups)]
 
-# Are the two distributions significantly different? (A: No - LTR,
-#                                                     A: Yes - SINEs,
-#                                                     A: Yes - LINEs,
-#                                                     A: Yes - All TEs)
+# Are the two distributions significantly different? (A: No - LTR, <- 0.41264004228669854 -> adjust(Bonferroni) -> 1
+#                                                     A: Yes - SINEs, <- 9.416765131506125e-5 -> adjust(Bonferroni) -> 0.000376670605260245
+#                                                     A: Yes - LINEs, <- 0.003829015903780406 -> adjust(Bonferroni) -> 0.015316063615121623
+#                                                     A: Yes - All TEs) <- 0.0017718660013885204 -> adjust(Bonferroni) -> 0.007087464005554081
 pvalue(MannWhitneyUTest(te_distances, te_distances_dups))
 
-# Are the proportions of genes overlapping a TE significantly different between paralogs and non-paralogs? (A: No - LTRs
-#                                                                                                           A: Yes - SINEs,
-#                                                                                                           A: Yes - LINEs,
-#                                                                                                           A: Yes - All TEs)
+# Are the proportions of genes overlapping a TE significantly different between paralogs and non-paralogs? (A: No - LTRs, -> 0.1764005443808332 -> adjust(Bonferroni) ->  0.7056021775233328
+#                                                                                                           A: Yes - SINEs, -> 0.0003089060474037944 -> adjust(Bonferroni) -> 0.0012356241896151776
+#                                                                                                           A: Yes - LINEs, -> 0.0018902814592321418 -> adjust(Bonferroni) -> 0.007561125836928567
+#                                                                                                           A: Yes - All TEs) -> 0.0035883749357294805 -> adjust(Bonferroni) -> 0.014353499742917922
 pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
-pvalue(ChisqTest(cont_table))
+adjust([0.1764005443808332, 0.0003089060474037944, 0.0018902814592321418, 0.0035883749357294805], Bonferroni())
 
 # What is the distribution of TE distances among coding genes w/ vs. w/o H3K9me3?
 # What about among just the filtered paralogs?
@@ -98,8 +99,10 @@ te_distances_no_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(
 
 # Is the distribution of TE distances significantly different between genes with and without K9me3? (A: Yes - LTRs,
 #                                                                                                    A: Yes - LINEs,
-#                                                                                                    A: Yes - SINEs)
-plot([box(y=te_distances_k9me3, name="TE Distance w/ K9me3", marker_color="blue"), box(y=te_distances, name="TE Distance w/o k9me3", marker_color="red")])
+#                                                                                                    A: Yes - SINEs,
+#                                                                                                    A: Yes - All TEs) -> 3.547289538993912e-60
+plot([box(y=te_distances_k9me3, name="TE Distance w/ K9me3", marker_color="blue"), 
+      box(y=te_distances, name="TE Distance w/o k9me3", marker_color="red")])
 pvalue(MannWhitneyUTest(te_distances_k9me3, te_distances_no_k9me3))
 cont_table = [count(d -> d == 0, te_distances_k9me3) count(d -> d == 0, te_distances_no_k9me3); 
               count(d -> d > 0, te_distances_k9me3) count(d -> d > 0, te_distances_no_k9me3)]
@@ -107,12 +110,13 @@ cont_table = [count(d -> d == 0, te_distances_k9me3) count(d -> d == 0, te_dista
 # Are the proportions of genes overlapping a TE significantly different between genes with and without K9me3? (A: Yes - LTRs,
 #                                                                                                           A: Yes - SINEs,
 #                                                                                                           A: Yes - LINEs,
-#                                                                                                           A: Yes - All TEs)
+#                                                                                                           A: Yes - All TEs) -> 3.9994659703972094e-66
 pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
 
 # Are the distributions of TE distances significantly different between paralogs with and without K9me3? (A: Yes - LTRs,
 #                                                                                                         A: Yes - SINEs,
-#                                                                                                         A: Yes - LINEs)
+#                                                                                                         A: Yes - LINEs
+#                                                                                                         A: Yes - All TEs) -> 1.1686502276252259e-45
 te_distances_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ ids_with_k9me3 && id ∈ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> !(id ∈ ids_with_k9me3) && id ∈ paralog_ids, te_dist_df.GeneID)]
 display(plot([box(y=te_distances_k9me3_dups, name="TE Distance w/ K9me3 (Paralogs)", marker_color="blue"), 
@@ -123,7 +127,7 @@ pvalue(MannWhitneyUTest(te_distances_k9me3_dups, te_distances_no_k9me3_dups))
 # Are the ratios of TE overlap significantly different between paralogs with and without K9me3? (A: Yes - LTRs,
 #                                                                                                A: Yes - SINEs,
 #                                                                                                A: Yes - LINEs,
-#                                                                                                A: Yes - All TEs)
+#                                                                                                A: Yes - All TEs) -> 2.866036139619633e-48
 plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"], 
          y=[count(d -> d == 0, te_distances_k9me3_dups)/length(te_distances_k9me3_dups), 
             count(d -> d == 0, te_distances_no_k9me3_dups)/length(te_distances_no_k9me3_dups)]),
@@ -161,7 +165,8 @@ yaxis=attr(gridcolor="lightgray",
 ))
 
 # Are genes with H3K9me3 more likely to be triplosensitive? (A: No)
-pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], indiv_df.pTriplo[indiv_df.HasK9me3 .== false]))
+pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], 
+                        indiv_df.pTriplo[indiv_df.HasK9me3 .== false]))
 
 display(plot([
     box(y=indiv_df.pTriplo[indiv_df.TEDistance .<= 0], name="TE overlap", marker_color="blue"),
@@ -171,10 +176,12 @@ Layout(plot_bgcolor="rgba(0,0,0,0)",
 yaxis=attr(gridcolor="lightgray",
            gridwidth=1.5))))
 
-# Are genes with TE overlap more likely to be triplosensitive? (A: No - LTR,
-#                                                               A: Yes - SINEs,
-#                                                               A: Yes - LINEs,
-#                                                               A: Yes - All TEs)
+# Are genes with TE overlap more likely to be triplosensitive? (A: No - LTR -> 0.479435080559795,
+#                                                               A: Yes - SINEs -> 1.2221709967990017e-8,
+#                                                               A: Yes - LINEs -> 3.7744741554628688e-6,
+#                                                               A: Yes - DNA TEs -> 1.0166622340827324e-9,
+#                                                               A: Yes - All TEs -> 8.059948448185499e-6,
+#                                                               )
 pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.TEDistance .<= 0], indiv_df.pTriplo[indiv_df.TEDistance .> 0]))
 
 cont_table = [count(sens -> sens >= 0.5, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]) count(sens -> sens < 0.5, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]); 
@@ -188,7 +195,7 @@ confidence_cutoff = 0.93
 # Are high-confidence triplosensitive genes closer to TEs? (A: ? - LTR,
 #                                                           A: Yes - SINEs,
 #                                                           A: No - LINEs,
-#                                                           A: ? - All TEs)
+#                                                           A: Yes - All TEs) -> 0.03803689084188746
 pvalue(MannWhitneyUTest(indiv_df.TEDistance[indiv_df.pTriplo .>= confidence_cutoff], indiv_df.TEDistance[indiv_df.pTriplo .< confidence_cutoff]))
 
 # Are high-confidence triplosensitive genes more likely to have H3K9me3? (A: No)
@@ -201,91 +208,9 @@ p1 = pvalue(FisherExactTest(cont_table1[1, 1], cont_table1[1, 2], cont_table1[2,
 # Are high-confidence triplosensitive genes more likely to overlap a TE? (A: No - LTR,
 #                                                                         A: Yes - SINEs,
 #                                                                         A: Yes - LINEs,
-#                                                                         A: Yes - All TEs)
+#                                                                         A: Yes - All TEs) -> 0.02313507995779753
 cont_table2 = [count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]); 
               count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .> 0]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .> 0])]
 
 sens_greater2 = (cont_table2[1, 1]/cont_table2[2,1]) > (cont_table2[1, 2]/cont_table2[2, 2])
 p2 = pvalue(FisherExactTest(cont_table2[1, 1], cont_table2[1, 2], cont_table2[2, 1], cont_table2[2, 2]))
-
-counts = [count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true .&& indiv_df.TEDistance .<= 0]),
-          count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true .&& indiv_df.TEDistance .<= 0]),
-          count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false .&& indiv_df.TEDistance .<= 0]), 
-          count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false .&& indiv_df.TEDistance .<= 0]),
-          count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true .&& indiv_df.TEDistance .> 0]),
-          count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true .&& indiv_df.TEDistance .> 0]),
-          count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false .&& indiv_df.TEDistance .> 0]),
-          count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false .&& indiv_df.TEDistance .> 0])]
-
-display(plot([
-    bar(x=["Hi-Confidence With K9me3 & TE overlap", 
-            "Low-Confidence With K9me3 & TE overlap",
-            "Hi-Confidence Without K9me3 & TE overlap",
-            "Low-Confidence Without K9me3 & TE overlap",
-            "Hi-Confidence With K9me3 & No TE overlap",
-            "Low-Confidence With K9me3 & No TE overlap",
-            "Hi-Confidence Without K9me3 & No TE overlap",
-            "Low-Confidence Without K9me3 & No TE overlap"],
-        y=counts)
-]))
-
-sens_greater3 = (cont_table3[1, 1]/cont_table3[2,1]) > (cont_table3[1, 2]/cont_table3[2, 2])
-p3 = pvalue(FisherExactTest(cont_table3[1, 1], cont_table3[1, 2], cont_table3[2, 1], cont_table3[2, 2]))
-
-df = DataFrame(
-    :Var => ["K9me3", "TE Distance", "K9me3 & TE Distance"],
-    :SensGreater => [sens_greater1, sens_greater2, sens_greater3],
-    :PValue => [p1, p2, p3]
-)
-
-
-# OLD:
-#=
-# Interaction count vs. TE distance vs. K9me3:
-interact_count_df = CSV.read(prot_interact_count_file, DataFrame)
-insertcols!(paralog_data, :InteractCountGene => 0, :InteractCountParalog => 0)
-
-for i in 1:nrow(paralog_data)
-    gene_id = paralog_data.GeneID[i]
-    paralog_id = paralog_data.ParalogID[i]
-    
-    gene_interact_count = interact_count_df.count[interact_count_df.gene .== gene_id]
-    paralog_interact_count = interact_count_df.count[interact_count_df.gene .== paralog_id]
-    
-    if !isempty(gene_interact_count)
-        paralog_data.InteractCountGene[i] = only(gene_interact_count)
-    else
-        paralog_data.InteractCountGene[i] = -1
-    end
-    
-    if !isempty(paralog_interact_count)
-        paralog_data.InteractCountParalog[i] = only(paralog_interact_count)
-    else
-        paralog_data.InteractCountParalog[i] = -1
-    end
-end
-
-both_counts = filter(row -> row.InteractCountGene != -1 && row.InteractCountParalog != -1, paralog_data)
-insertcols!(both_counts, :AvgCount => 0.0, :TEDistance => 0.0, :HasK9me3 => false)
-
-# Caclulate the average interaction count:
-for i in 1:nrow(both_counts)
-    both_counts.AvgCount[i] = mean([both_counts.InteractCountGene[i], both_counts.InteractCountParalog[i]])
-    both_counts.TEDistance[i] = only(te_dist_df.Distance[te_dist_df.GeneID .== both_counts.GeneID[i]])
-    both_counts.HasK9me3[i] = both_counts.GeneID[i] ∈ ids_with_k9me3
-end
-
-display(plot([
-    box(y=both_counts.AvgCount[both_counts.HasK9me3 .== true], name="With K9me3", marker_color="blue"),
-    box(y=both_counts.AvgCount[both_counts.HasK9me3 .== false], name="Without K9me3", marker_color="red")
-]))
-
-pvalue(MannWhitneyUTest(both_counts.AvgCount[both_counts.HasK9me3 .== true], both_counts.AvgCount[both_counts.HasK9me3 .== false]))
-
-display(plot([
-    box(y=both_counts.AvgCount[both_counts.TEDistance .<= 0], name="TE overlap", marker_color="blue"),
-    box(y=both_counts.AvgCount[both_counts.TEDistance .> 0], name="No TE overlap", marker_color="red")
-]))
-
-pvalue(MannWhitneyUTest(both_counts.AvgCount[both_counts.TEDistance .<= 0], both_counts.AvgCount[both_counts.TEDistance .> 0]))
-=#

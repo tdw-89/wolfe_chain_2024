@@ -1,3 +1,6 @@
+# Given that the numbered chromosomes were the same in the dictybase release and Ensembly releases,
+# only the non-numbered (contigs) chromosomes were re-scanned for TEs with RepeatModeler
+
 using CSV
 using DataFrames
 

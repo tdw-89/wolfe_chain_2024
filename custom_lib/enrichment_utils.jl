@@ -10,6 +10,8 @@ using CategoricalArrays
 using NaturalSort
 using Interpolations
 using HypothesisTests
+using Random
+using Statistics
 
 if !@isdefined ChromData
 
@@ -348,26 +350,35 @@ function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::B
     if gene.strand == '+'
         
         if typeof(sig_range.range_start) == REGION
-
             range_start = 1 + sig_range.start_offset
-        elseif typeof(sig_range.range_start) == TSS
 
+        elseif isa(sig_range.range_start, TSS) && isa(sig_range.start_offset_type, PERCENTAGE)
+            gene_len = gene.gene_end - gene.gene_start + 1
+            gene_len_frac = min(round(Int, gene_len / 100 * sig_range.start_offset), gene_len)
+            range_start = gene.gene_start - gene.regions[1].region_start + 1 + gene_len_frac
+
+        elseif isa(sig_range.range_start, TSS)
             range_start = gene.gene_start - gene.regions[1].region_start + 1 + sig_range.start_offset
-        elseif typeof(sig_range.range_start) == TES
 
+        elseif isa(sig_range.range_start, TES)
             range_start = gene.gene_end - gene.regions[1].region_start + 1 + sig_range.start_offset
+
         else
 
             error("unrecognized range start $(sig_range.range_start)")
         end
 
-        if typeof(sig_range.range_stop) == REGION
+        if isa(sig_range.range_stop, REGION)
 
             range_stop = gene.regions[1].region_end - gene.regions[1].region_start + 1 + sig_range.stop_offset
-        elseif typeof(sig_range.range_stop) == TSS
+        elseif isa(sig_range.range_stop, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE)
+            gene_len = gene.gene_end - gene.gene_start + 1
+            gene_len_frac = min(round(Int, gene_len / 100 * sig_range.start_offset), gene_len)
+            range_stop = gene.gene_start - gene.regions[1].region_start + 1 + gene_len_frac
+        elseif isa(sig_range.range_stop, TSS)
 
             range_stop = gene.gene_start - gene.regions[1].region_start + 1 + sig_range.stop_offset
-        elseif typeof(sig_range.range_stop) == TES
+        elseif isa(sig_range.range_stop, TES)
                 
             range_stop = gene.gene_end - gene.regions[1].region_start + 1 + sig_range.stop_offset
         else
@@ -383,18 +394,22 @@ function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::B
         end
     elseif gene.strand == '-'
 
-        if typeof(sig_range.range_start) == REGION
+        if isa(sig_range.range_start, REGION)
             range_start = gene.regions[1].region_end - gene.regions[1].region_start + 1 - sig_range.start_offset
 
-        elseif typeof(sig_range.range_start) == TSS
+        elseif isa(sig_range.range_start, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE)
+
             range_start = gene.gene_end - gene.regions[1].region_start + 1 - sig_range.start_offset
 
-        elseif typeof(sig_range.range_start) == TES
+        elseif isa(sig_range.range_start, TSS)
+            range_start = gene.gene_end - gene.regions[1].region_start + 1 - sig_range.start_offset
+
+        elseif isa(sig_range.range_start, TES)
             range_start = gene.gene_start - gene.regions[1].region_start + 1 - sig_range.start_offset
 
         else
-
             error("unrecognized range start $(sig_range.range_start)")
+
         end
 
         if typeof(sig_range.range_stop) == REGION
@@ -412,14 +427,105 @@ function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::B
         end
 
         try
-            sig = reverse(signal[range_stop:range_start])
+            reverse(signal[range_stop:range_start])
             return true
-        catch BoundsError
-            return false
+        catch err
+            if isa(err, BoundsError)
+                return false
+            else
+                throw(err)
+            end
         end
     else
 
         error("invalid strand $(gene.strand)")
+    end
+end
+
+function getsiginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
+    if sample_ind ∉ 1:length(gene.samples)
+
+        error("Invalid sample index for gene $(gene.id).")
+    end
+
+    # Get the signal vector
+    if !peak_data
+        error("not implemented")
+
+    end
+
+    if isempty(gene.regions[1].binsignals)
+        error("No peak data for gene $(gene.id) in sample $sample_ind.")
+
+    end
+
+    signal = gene.strand == '+' ? gene.regions[1].binsignals[sample_ind] : reverse(gene.regions[1].binsignals[sample_ind])
+    gene_len = gene.gene_end - gene.gene_start + 1
+    tss = gene.strand == '+' ? (gene.gene_start - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_end) + 1
+    tes = gene.strand == '+' ? (gene.gene_end - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_start) + 1
+    range_start = isa(sig_range.range_start, REGION) ? 1 + sig_range.start_offset : 
+                   isa(sig_range.range_start, TES) ? tes + sig_range.start_offset :
+                   isa(sig_range.range_start, TSS) && isa(sig_range.start_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.start_offset * 100) :
+                   tss + sig_range.start_offset
+    range_stop = isa(sig_range.range_stop, REGION) ? length(signal) + sig_range.stop_offset : 
+                 isa(sig_range.range_stop, TES) ? tes + sig_range.stop_offset :
+                 isa(sig_range.range_stop, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.stop_offset * 100) :
+                 tss + sig_range.stop_offset
+
+    try 
+        return signal[range_start:range_stop]
+    catch err
+        if isa(err, BoundsError)
+            return missing
+        else
+            throw(err)
+        end
+    end
+end
+
+
+
+
+
+function siginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
+    if sample_ind ∉ 1:length(gene.samples)
+
+        error("Invalid sample index for gene $(gene.id).")
+    end
+
+    # Get the signal vector
+    if !peak_data
+        error("not implemented")
+
+    end
+
+    if isempty(gene.regions[1].binsignals)
+        error("No peak data for gene $(gene.id) in sample $sample_ind.")
+
+    end
+
+    signal = gene.strand == '+' ? gene.regions[1].binsignals[sample_ind] : reverse(gene.regions[1].binsignals[sample_ind])
+    gene_len = gene.gene_end - gene.gene_start + 1
+    tss = gene.strand == '+' ? (gene.gene_start - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_end) + 1
+    tes = gene.strand == '+' ? (gene.gene_end - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_start) + 1
+    range_start = isa(sig_range.range_start, REGION) ? 1 + sig_range.start_offset : 
+                   isa(sig_range.range_start, TES) ? tes + sig_range.start_offset :
+                   isa(sig_range.range_start, TSS) && isa(sig_range.start_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.start_offset * 100) :
+                   tss + sig_range.start_offset
+    range_stop = isa(sig_range.range_stop, REGION) ? length(signal) + sig_range.stop_offset : 
+                 isa(sig_range.range_stop, TES) ? tes + sig_range.stop_offset :
+                 isa(sig_range.range_stop, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.stop_offset * 100) :
+                 tss + sig_range.stop_offset
+
+    try 
+        sig = signal[range_start:range_stop]
+        return true
+    catch err
+        if isa(err, BoundsError)
+            return false
+        else
+            throw(err)
+        end
     end
 end
 
@@ -1720,8 +1826,27 @@ function intergenic_dist(ref_genome)
     error("under construction")
 end
 
+"""Given vectors X and Y calculate ρ for N permutations of Y"""
+function perm_cor_2side(X::Vector{Float64}, Y::Vector{Float64}, N::Int=10000)
+    original_cor = cor(X, Y)
+    Yperm = copy(Y)
+    perm_cors = Float64[]
+    for _ in 1:N
+        shuffle!(Yperm)
+        push!(perm_cors, abs(cor(X, Yperm)))
+    end
+    return (
+        count(c -> c >= abs(original_cor), perm_cors) / (N + 1),
+        original_cor
+    )
+end
+
 """function to get the correlation between enrichment in significant regions and dS"""
-function get_cor(paralog_df::DataFrame, gene_range::GeneRange, sample_inds::Vector{Int}, genome::RefGenome)
+function get_cor(paralog_df::DataFrame, 
+                 gene_range::GeneRange, 
+                 sample_inds::Vector{Int}, 
+                 genome::RefGenome, 
+                 global_mean::Float64)
     XS = []
     YS = []
     for sample_ind in sample_inds
@@ -1729,7 +1854,7 @@ function get_cor(paralog_df::DataFrame, gene_range::GeneRange, sample_inds::Vect
         paralogs = get(genome, collect(paralog_df.ParalogID))
         enrich_vals_gene = [!siginrange(gene, gene_range) ? missing : mean(getsiginrange(gene, gene_range, sample_ind)) for gene in genes]
         enrich_vals_paralog = [!siginrange(paralog, gene_range) ? missing : mean(getsiginrange(paralog, gene_range, sample_ind)) for paralog in paralogs]
-        enrich_means = [(!ismissing(pair[1]) && !ismissing(pair[2])) ? mean(pair) : missing for pair in zip(enrich_vals_gene, enrich_vals_paralog)]
+        enrich_means = [(!ismissing(pair[1]) && !ismissing(pair[2])) ? mean(pair) / global_mean : missing for pair in zip(enrich_vals_gene, enrich_vals_paralog)]
         pairs_filtered = [pair for pair in zip(enrich_means, paralog_df.dS) if !ismissing(pair[1]) && !ismissing(pair[2])]
         xs = [pair[1] for pair in pairs_filtered]
         ys = [pair[2] for pair in pairs_filtered]
@@ -1742,3 +1867,52 @@ function get_cor(paralog_df::DataFrame, gene_range::GeneRange, sample_inds::Vect
     YS = vec(mean(YS, dims=2))
     return perm_cor_2side(XS, YS)
 end
+
+"""function to get the correlation between enrichment in significant regions and dS"""
+function get_cor_expr(expr_df::DataFrame, 
+                      gene_range::GeneRange, 
+                      sample_inds::Vector{Int}, 
+                      genome::RefGenome)
+    XS = []
+    YS = []
+    for sample_ind in sample_inds
+        genes = get(genome, collect(expr_df.GeneID))
+        xs = [getsiginrange(gene, gene_range, sample_ind) for gene in genes]
+        ys = [expr_df.Avg[i] for (i, gene_sig) in enumerate(xs) if !ismissing(gene_sig)]
+        push!(XS, mean.(collect(skipmissing(xs))))
+        push!(YS, ys)
+    end
+    XS = reduce(hcat, XS)
+    YS = reduce(hcat, YS)
+    XS = vec(mean(XS, dims=2))
+    YS = vec(mean(YS, dims=2))
+    return perm_cor_2side(XS, YS)
+end
+
+
+# TESTS:
+#=
+test_gene1 = Gene(missing,
+                  missing,
+                  "test1",
+                  "test1",
+                  '+',
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  missing,
+                  [],
+                  missing,
+                  1,
+                  20,
+                  nothing,
+                  [],
+                  [],
+                  nothing
+)  
+=#

@@ -1,6 +1,7 @@
 using CSV
 using DataFrames
 using PlotlyJS
+using HypothesisTests
 
 # custom lib:
 include("custom_lib/load_gff.jl")
@@ -59,3 +60,7 @@ layout = Layout(yaxis=attr(title="log2(TPM + 0.5)",
 fig = plot([te_box, non_te_box], layout)
 
 savefig(fig, joinpath(plot_save_dir, "gene_type_expression.html"))
+
+non_te_expression = [mean(gene.rnas[1].expression) for gene in non_te_gene_list if length(gene.rnas) > 0]
+te_expression = [mean(gene.rnas[1].expression) for gene in te_genes_list if length(gene.rnas) > 0]
+MannWhitneyUTest(non_te_expression, te_expression)

@@ -54,18 +54,17 @@ GC.gc()
 
 # Load the paralog info
 paralog_data = CSV.read(human_paralog_info, DataFrame)
-select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 filter!(row -> row.dS <= 3, paralog_data)
+CSV.write("data/paralog_data_human.csv", paralog_data)
+select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
-# Load the singleton data
-singletons = CSV.read(singleton_file, DataFrame)
 
-# Get the global mean enrichment for H3K9me3 from TSS-500:TSS+500 for singletons
+# Get the global mean enrichment for H3K9me3 from TSS-500:TSS+500 for all coding genes
 global_mean = mean([
                 mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i)) 
                 for i in eachindex(human_ref.genes[2][1].samples)])
                 for gene in human_ref.genes[2]
-                if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1] && gene.id ∈ singletons[!,1]
+                if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1]
 ])
 
 # Plot the enrichment

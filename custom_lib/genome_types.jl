@@ -193,6 +193,9 @@ abstract type RangeAnchor end
 struct TSS <: RangeAnchor end
 struct REGION <: RangeAnchor end
 struct TES <: RangeAnchor end
+abstract type OffSetType end
+struct INTEGER <: OffSetType end
+struct PERCENTAGE <: OffSetType end
 
 struct GeneRange
 
@@ -200,13 +203,42 @@ struct GeneRange
     range_stop::RangeAnchor
     start_offset::Int
     stop_offset::Int
+    start_offset_type::OffSetType
+    stop_offset_type::OffSetType
+
+    GeneRange(start::RangeAnchor, stop::RangeAnchor, start_offset::Int, stop_offset::Int, start_offset_type::OffSetType, stop_offset_type::OffSetType) = begin
+
+        if isa(start_offset_type, PERCENTAGE) && !isa(start, TSS)
+            error()
+        end
+        
+        if isa(stop_offset_type, PERCENTAGE) && !isa(stop, TSS)
+            error()
+        end
+    
+        new(
+            start, 
+            stop, 
+            start_offset, 
+            stop_offset, 
+            start_offset_type, 
+            stop_offset_type
+        )
+    end
 end
 
 # Constructors:
 GeneRange(start::RangeAnchor, stop::RangeAnchor) = begin
 
-    return GeneRange(start, stop, 0, 0)
+    return GeneRange(start, stop, 0, 0, INTEGER(), INTEGER())
 end
+
+GeneRange(start::RangeAnchor, stop::RangeAnchor, start_offset::Int, stop_offset::Int) = begin
+
+    return GeneRange(start, stop, start_offset, stop_offset, INTEGER(), INTEGER())
+end
+
+
 
 # Empty constructor:
 function RefGenome()

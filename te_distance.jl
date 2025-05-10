@@ -73,7 +73,9 @@ for (i, gene) in enumerate(cds_genes)
             break
         else
 
-            distance = min(distance, min(abs(repeat_elem.repeat_start - gene.gene_end), abs(gene.gene_start - repeat_elem.repeat_end)))
+            distance = min(distance, 
+                       min(abs(repeat_elem.repeat_start - gene.gene_end), 
+                           abs(gene.gene_start - repeat_elem.repeat_end)))
         end
     end
 

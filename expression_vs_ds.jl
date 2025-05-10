@@ -182,6 +182,7 @@ insertcols!(paralog_data, :Diff =>
 )
 
 sort!(paralog_data, :dS)
+cor_test = perm_cor_2side(paralog_data.AvgExpr, Vector(paralog_data.dS))
 
 # Get the dS values and quantiles for the filtered pairs
 quantile_labels = cut(paralog_data[!, 3], 10)

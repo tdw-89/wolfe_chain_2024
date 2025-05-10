@@ -19,24 +19,12 @@ end
 
 # Peak files
 chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-# chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_16/"
-# h3_peak_dir = "../../../../data/wang_et_al/processed/run_9/peak_files_H3"
 atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
-# peak_dir = "../../../../data/zebrafish/data_from_freddy/"
 sig_region_file = "./data/sig_regions.csv"
 
-# Genome data
-# dicty genome data
-# gff_data = "../../../../data/AX4/genome_ver_2_7/gff3/"
-# chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/chromosome_lengths.txt"
-
-# dicty ensambl 52 genome data
+# dicty ensembl 52 genome data
 gff_data = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-
-# zebrafish genome data
-# gff_file = "../../../../data/zebrafish/Danio_rerio.GRCz10.91.gff3"
-# chrom_lengths_file = "../../../../data/zebrafish/chromosome_lengths_z10.txt"
 
 # Expression data
 expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
@@ -48,30 +36,12 @@ ser_data_dir = "./data/julia_serialized/"
 
 # Load genome data
 ref_genome = loadgenome(gff_data, chrom_lengths_file)
-# ref_genome = loadgenome(gff_file, chrom_lengths_file)
 
 # Load peak data
-# dicty peak data
 peak_files = [filter(fn -> !contains(fn, r"_S[AB]_"), readdir(chip_peak_file_dir, join=true)); readdir(atac_peak_file_dir, join=true)]
 filter!(fn -> endswith(fn, ".narrowPeak"), peak_files)
-
-# zebrafish peak data
-# peak_files = filter(fn -> endswith(fn, ".peak.txt") || endswith(fn, ".narrowPeak"), readdir(peak_dir, join=true))
-# k27ac_files = filter(fn -> contains(lowercase(fn), "k27ac"), peak_files)
-# k4me3_files = filter(fn -> contains(lowercase(fn), "k4me3"), peak_files)
-# k9me3_files = filter(fn -> contains(lowercase(fn), "k9me3"), peak_files)
-# atac_files = filter(fn -> contains(lowercase(fn), "atac"), peak_files)
-
-# dicty peak data
 peak_data = binpeaks(peak_files, chrom_lengths_file)
 addtogenes!(ref_genome, peak_data)
-# zebrafish peak data
-# peak_data = binpeaks(vcat(k27ac_files, k4me3_files), chrom_lengths_file)
-# peak_data_k9 = binpeakshomer(k9me3_files, chrom_lengths_file)
-# peak_data_atac = binpeaks(atac_files, chrom_lengths_file)
-# addtogenes!(ref_genome, peak_data)
-# addtogenes!(ref_genome, peak_data_k9)
-# addtogenes!(ref_genome, peak_data_atac)
 
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)
@@ -147,11 +117,20 @@ tes_enrich = plot_enrich_expr_region(expr_data,
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
 
 sig_region_df = CSV.read(sig_region_file, DataFrame)
-bar_plots, p_vals, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])), # K27ac
+bar_plots, kw_tests, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])), # K27ac
                                                                             GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])), # K4me3
                                                                             GeneRange(TSS(), TSS(), sig_region_df.Start[3], 0), # K9me3
                                                                             GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))], # ATAC
                                                         global_means_vec, [0,4], true, true);
-adj_pvals = adjust(pvalue.(p_vals), Bonferroni())
+p_vals_perm_cor = [get_cor_expr(expr_data, 
+                                         gene_range, 
+                                         sample_ind, 
+                                         ref_genome) for (sample_ind, gene_range) in zip(sample_inds_vec,
+                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])),
+                             GeneRange(TSS(), TES(), 0, 0),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))])]
+adj_pvals_kw = adjust(pvalue.(kw_tests), Bonferroni())
+adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], Bonferroni())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr.json"), means_vecs)

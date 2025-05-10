@@ -16,8 +16,8 @@ else
     include("genome_types.jl")
 end
 
-default_upstream = 2000
-default_downstream = 2000
+const default_upstream = 2000
+const default_downstream = 2000
 
 function loadgenome(gff_files::Union{Vector{String}, String}, chrom_lengths_file::Union{String, Nothing}=nothing; feature_type::String="gene", alt_id_field::Union{String, Nothing}=nothing)
 
@@ -178,58 +178,14 @@ function create_region(strand::Char,
                        chrom_length::Int,
                        scaffold::Union{Scaffold,Missing}=missing,
                        contig::Union{Contig,Missing}=missing)
-
-    if strand == '+'
-
-        if gene_start > upstream && (gene_end + downstream) <= chrom_length
-
-            region = Region(scaffold, contig, gene_start - upstream, gene_end + downstream, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        elseif gene_start > upstream && (gene_end + downstream) > chrom_length
-        
-            region = Region(scaffold, contig, gene_start - upstream, chrom_length - 1, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        elseif gene_start <= upstream && (gene_end + downstream) <= chrom_length
-
-            region = Region(scaffold, contig, 1, gene_end + downstream, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        else
-
-            region = Region(scaffold, contig, 1, chrom_length - 1, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        end
-    else
-
-        ###############
-        # NOTE: (-)-sense gense are considered here to start at 'gene_end' to be consistent with
-        # the way all genes are given the same start/end orientation regardless of strand in GFF
-        # files.
-        ###############
-
-
-        if gene_start > downstream + 1 && (gene_end + upstream) <= chrom_length
-
-            region = Region(scaffold, contig, gene_start - downstream, gene_end + upstream, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-
-        elseif gene_start > downstream + 1 && (gene_end + upstream) > chrom_length
-
-            region = Region(scaffold, contig, gene_start - downstream, chrom_length, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-
-        elseif gene_start <= downstream + 1 && (gene_end + upstream) <= chrom_length
-
-            region = Region(scaffold, contig, 1, gene_end + upstream, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        # (unlikely except for a tiny scaffold?)
-        else
-            
-            region = Region(scaffold, contig, 1, chrom_length, Dict{String, Vector{Annotation}}(),  Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(), BitVector[], String[])
-
-        end
-    end
-
-    return region
+    return Region(scaffold,
+                    contig,
+                    strand == '+' ? max(gene_start - upstream, 1) : max(gene_start - downstream, 1),
+                    strand == '+' ? min(gene_end + downstream, chrom_length) : min(gene_end + upstream, chrom_length),
+                    Dict{String, Vector{Annotation}}(),
+                    Vector{Union{Vector{UInt8}, Vector{UInt16}, Vector{UInt32}, Vector{UInt64}}}(),
+                    BitVector[],
+                    String[])
 end
 
 function parsegene!(record::GFF3.Record, refs::RefGenome, chrom_lengths::DataFrame, using_chrom_file::Bool; alt_id_field::Union{String, Nothing}=nothing)
