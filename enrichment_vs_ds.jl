@@ -122,16 +122,16 @@ serialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"), tes_enrich)
 
 # Plot bar plots of coverage in significant regions
 sig_region_df = CSV.read(sig_region_file, DataFrame)
-bar_plots, kw_tests, means_vecs = plot_bar(paralog_data, filtered_paralog_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])), # K27ac
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])), # K4me3
-                                                                            GeneRange(TSS(), TSS(), sig_region_df.Start[3], 100), # K9me3
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))], # ATAC
+bar_plots, kw_tests, means_vecs = plot_bar(paralog_data, filtered_paralog_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]), # K27ac
+                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]), # K4me3
+                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[3], sig_region_df.End[3]), # K9me3
+                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])], # ATAC
                                                             global_means_vec, [0,4], true, true);
 p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
-                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])),
-                             GeneRange(TSS(), TSS(), 0, 0),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))],
+                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[3], sig_region_df.End[3]),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])],
                              global_means_vec)]
 adj_p_vals_perm_cor = adjust([pair[1] for pair in p_vals_perm_cor], Bonferroni())
 adj_p_vals_kw = adjust(pvalue.(kw_tests), Bonferroni())

@@ -10,7 +10,7 @@ include("custom_lib/enrichment_utils.jl")
 include("custom_lib/te_utils.jl")
 
 # Duplicate filtering parameter:
-id_method = "dS" # "dS", "dN", or "id"
+id_method = "dS" #
 id_threshold = 3
 
 # Peak files
@@ -66,43 +66,29 @@ final_gene_list = open(final_gene_list) do file
 end
 
 # Filter the paralogs:
-if id_method == "dS"
-    # paralog_data.dS = map(pair -> max(pair...), zip(paralog_data.dS, paralog_data.dN))
-    select!(paralog_data, ["GeneID", "ParalogID", id_method])
-    filter!(row -> row[id_method] <= id_threshold, paralog_data)
-
-elseif id_method == "id"
-    max_id = map(pair -> max(pair...), zip(paralog_data.PercIDqt, paralog_data.PercIDtq))
-    insertcols!(paralog_data, 3, :MaxPerc => max_id)
-    filter!(row -> row.MaxPerc >= id_threshold, paralog_data)
-    select!(paralog_data, ["GeneID", "ParalogID", "MaxPerc"])
-
-else
-    error("Invalid id_method: $id_method")
-
-end
+select!(paralog_data, ["GeneID", "ParalogID", id_method])
+filter!(row -> row[id_method] <= id_threshold, paralog_data)
 
 # Load peak data
 peak_files = [readdir(chip_peak_file_dir, join=true); readdir(atac_peak_file_dir, join=true)]
 peak_files = filter(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_files = filter(fn -> !contains(fn, r"_S[AB]+_"), peak_files)
 peak_data = binpeaks(peak_files, chrom_lengths_file)
+significant_regions = CSV.read("./data/sig_regions.csv", DataFrame)
 addtogenes!(ref_genome, peak_data)
 
 # Which genes have H3K9me3?
 ids_with_k9me3 = []
+k9me3_start_offset = only(significant_regions[significant_regions.Mark .== "K9me3",:Start])
+k9me3_end_offset = only(significant_regions[significant_regions.Mark .== "K9me3",:End])
 
 for id in te_dist_df.GeneID
     gene = get(ref_genome, id)
     
-    if !siginrange(gene, GeneRange(TSS(), TSS(), -500, 100), 3)
-        continue
-    end
-    
-    avgerage_enrich = mean([
-        mean(getsiginrange(gene, GeneRange(TSS(), TSS(), -500, 100), ind)) for ind in [3, 6, 9]
+    hasK9me3 = any([
+        sum(getsiginrange(gene, GeneRange(TSS(), TES(), k9me3_start_offset, k9me3_end_offset), ind)) > 0 for ind in [3, 6, 9]
     ])
-    if avgerage_enrich > 0
+    if hasK9me3
         push!(ids_with_k9me3, id)
     end
 end

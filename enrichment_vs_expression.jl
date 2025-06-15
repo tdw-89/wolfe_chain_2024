@@ -78,8 +78,7 @@ k4me3_inds = [2, 5, 8]
 k9me3_inds = [3, 6, 9]
 atac_inds = [10, 11, 12]
 sample_inds_vec = [k27ac_inds, k4me3_inds, k9me3_inds, atac_inds]
-global_means_vec = 
-[mean([mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
+global_means_vec = [mean([mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
 
 tss_enrich = plot_enrich_expr_region(expr_data, 
     filtered_gene_list, 
@@ -117,19 +116,19 @@ tes_enrich = plot_enrich_expr_region(expr_data,
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
 
 sig_region_df = CSV.read(sig_region_file, DataFrame)
-bar_plots, kw_tests, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])), # K27ac
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])), # K4me3
-                                                                            GeneRange(TSS(), TSS(), sig_region_df.Start[3], 0), # K9me3
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))], # ATAC
+bar_plots, kw_tests, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]), # K27ac
+                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]), # K4me3
+                                                                            GeneRange(TSS(), TSS(), sig_region_df.Start[3], sig_region_df.End[3]), # K9me3
+                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])], # ATAC
                                                         global_means_vec, [0,4], true, true);
-p_vals_perm_cor = [get_cor_expr(expr_data, 
-                                         gene_range, 
-                                         sample_ind, 
+p_vals_perm_cor = [get_cor_expr(expr_data,
+                                         gene_range,
+                                         sample_ind,
                                          ref_genome) for (sample_ind, gene_range) in zip(sample_inds_vec,
-                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], parse(Int, sig_region_df.End[1])),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[2], parse(Int, sig_region_df.End[2])),
-                             GeneRange(TSS(), TES(), 0, 0),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[4], parse(Int, sig_region_df.End[4]))])]
+                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]),
+                             GeneRange(TSS(), TSS(), sig_region_df.Start[3], sig_region_df.End[3]),
+                             GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])])]
 adj_pvals_kw = adjust(pvalue.(kw_tests), Bonferroni())
 adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], Bonferroni())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)

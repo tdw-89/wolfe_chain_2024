@@ -14,10 +14,30 @@ const flanking_region = 500
 
 # Functions:
 function full_region(gene, sample_ind, flank_length)
-    signal = [getsiginrange(gene, GeneRange(TSS(), TSS(), -flank_length, -1), sample_ind); 
+    signal = [getsiginrange(gene, GeneRange(TSS(), TSS(), -flank_length, -1), sample_ind, pad_clamped=true); 
               to_percent(Float64.(getsiginrange(gene, GeneRange(TSS(), TES()), sample_ind))); 
-              getsiginrange(gene, GeneRange(TES(), TES(), 1, flank_length), sample_ind)]
+              getsiginrange(gene, GeneRange(TES(), TES(), 1, flank_length), sample_ind, pad_clamped=true)]
     return signal
+end
+
+function weighted_mean(val_mats::Vector{Matrix})
+    mat_dims = size(val_mats[1])
+    num_mats = length(val_mats)
+    val_mat = zeros(mat_dims)
+    count_mat = ones(Int, mat_dims)
+
+    for m in 1:num_mats
+        for i in 1:mat_dims[1]
+            for j in 1:mat_dims[2]
+                if val_mats[m][i,j] >= 0
+                    val_mat[i,j] += val_mats[m][i,j]
+                    count_mat[i,j] += 1
+                end
+            end
+        end
+    end
+
+    return val_mat ./ count_mat
 end
 
 function scan_tss(df::DataFrame)
@@ -60,11 +80,11 @@ function scan_tss(df::DataFrame)
     return df[sort([upstream_inds; downstream_inds]),:]
 end
 
-function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; show_plot=true)
+function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; save_plot=true)
 
-    sig_mats_body = []
-    sig_mats_upstream = []
-    sig_mats_downstream = []
+    sig_mats_body = Matrix[]
+    sig_mats_upstream = Matrix[]
+    sig_mats_downstream = Matrix[]
     for ind in sample_inds
         sig_mat_body = zeros(length(gene_list), 100)
         sig_mat_upstream = zeros(length(gene_list), flanking_region)
@@ -73,31 +93,28 @@ function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; sho
         for i in axes(sig_mat_body, 1)
             sig = to_percent(Float64.(getsiginrange(gene_list[i], GeneRange(TSS(), TES(), 0, 0), ind)))
             sig_mat_body[i, :] = sig
-
         end
 
         for i in axes(sig_mat_upstream, 1)
-            sig = Float64.(getsiginrange(gene_list[i], GeneRange(TSS(), TSS(), -flanking_region, -1), ind))
+            sig = getsiginrange(gene_list[i], GeneRange(TSS(), TSS(), -flanking_region, -1), ind, pad_clamped=true)
+            sig = Float64.(sig)
             sig_mat_upstream[i, :] = sig
-
         end
 
         for i in axes(sig_mat_downstream, 1)
-            sig = Float64.(getsiginrange(gene_list[i], GeneRange(TES(), TES(), 1, flanking_region), ind))
+            sig = Float64.(getsiginrange(gene_list[i], GeneRange(TES(), TES(), 1, flanking_region), ind, pad_clamped=true))
             sig_mat_downstream[i, :] = sig
-
         end
 
         push!(sig_mats_body, sig_mat_body)
         push!(sig_mats_upstream, sig_mat_upstream)
         push!(sig_mats_downstream, sig_mat_downstream)
-
     end
 
     # Average the matrices
-    sig_mat_body = mean(sig_mats_body)
-    sig_mat_upstream = mean(sig_mats_upstream)
-    sig_mat_downstream = mean(sig_mats_downstream)
+    sig_mat_body = weighted_mean(sig_mats_body)
+    sig_mat_upstream = weighted_mean(sig_mats_upstream)
+    sig_mat_downstream = weighted_mean(sig_mats_downstream)
 
     # return sig_mat_body, sig_mat_upstream, sig_mat_downstream
 
@@ -132,8 +149,9 @@ function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; sho
     full_df.Pval = adjust(full_df.Pval, BenjaminiHochberg())
     # full_df.Pval = map(pval -> min(10, -log10(pval)), full_df.Pval)
 
-    if show_plot
-        display(plot([scatter(x=1:nrow(full_df), y=full_df.Cor, name="Correlation"), 
+    if save_plot
+        savefig(
+            plot([scatter(x=1:nrow(full_df), y=full_df.Cor, name="Correlation"), 
                     scatter(x=1:nrow(full_df), y=full_df.Pval, name="p-value (adj.)"),
                     # scatter(x=1:nrow(full_df), y=fill(1.3010299956639813, nrow(full_df)), name="Significance cutoff")], Layout(
                     scatter(x=1:nrow(full_df), y=fill(0.05, nrow(full_df)), name="Significance cutoff")], 
@@ -147,8 +165,8 @@ function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; sho
             yaxis=attr(gridcolor="lightgray",
                        gridwidth=1.5),
             plot_bgcolor="white"
-            )))
-
+            )),
+            "./data/saved_figures/significant_regions_$plot_label.html")
     end
     return scan_tss(full_df)
 end
@@ -217,7 +235,7 @@ expr_data.Avg = log.(expr_data.Avg .+ 0.5)
 addexpression!(ref_genome, expr_data)
 
 # Filter to genes that have expression data and have 500 bp upstream and 500 downstream before a chromosome end
-filtered_gene_list = [gene for gene in ref_genome.genes[2] if has_expr(gene) && siginrange(gene, GeneRange(TSS(), TES(), -flanking_region, flanking_region), peak_data=true)]
+filtered_gene_list = [gene for gene in ref_genome.genes[2] if has_expr(gene)]
 
 expr_vec = [only(gene.rnas[1].expression) for gene in filtered_gene_list]
 k27_inds = [1,4,7]
@@ -225,26 +243,7 @@ k4_inds = [2,5,8]
 k9me3_inds = [3,6,9]
 atac_inds = [10,11,12]
 
-# Check the distribution among the top 10% and bottom 10% of genes
-expr_vals = [only(only(gene.rnas).expression) for gene in filtered_gene_list]
-qs = levelcode.(cut(expr_vals, 10))
-top_ten_percent = filtered_gene_list[findall(qs .== 10)]
-bottom_ten_percent = filtered_gene_list[findall(qs .== 1)]
-sigs_top_10_k4 = [mean([full_region(gene, ind, flanking_region) for ind in k4_inds]) for gene in top_ten_percent]
-sigs_bottom_10_k4 = [mean([full_region(gene, ind, flanking_region) for ind in k4_inds]) for gene in bottom_ten_percent]
-display(plot([scatter(x=1:length(sigs_top_10_k4), y=mean(sigs_top_10_k4), name="Top 10%"), scatter(x=1:length(sigs_bottom_10_k4), y=mean(sigs_bottom_10_k4), name="Bottom 10%")], Layout(title="K4me3")))
-sigs_top_10_k27 = [mean([full_region(gene, ind, flanking_region) for ind in k27_inds]) for gene in top_ten_percent]
-sigs_bottom_10_k27 = [mean([full_region(gene, ind, flanking_region) for ind in k27_inds]) for gene in bottom_ten_percent]
-display(plot([scatter(x=1:length(sigs_top_10_k27), y=mean(sigs_top_10_k27), name="Top 10%"), scatter(x=1:length(sigs_bottom_10_k27), y=mean(sigs_bottom_10_k27), name="Bottom 10%")], Layout(title="K27ac")))
-sigs_top_10_k9 = [mean([full_region(gene, ind, flanking_region) for ind in k9me3_inds]) for gene in top_ten_percent]
-sigs_bottom_10_k9 = [mean([full_region(gene, ind, flanking_region) for ind in k9me3_inds]) for gene in bottom_ten_percent]
-display(plot([scatter(x=1:length(sigs_top_10_k9), y=mean(sigs_top_10_k9), name="Top 10%"), scatter(x=1:length(sigs_bottom_10_k9), y=mean(sigs_bottom_10_k9), name="Bottom 10%")], Layout(title="K9me3")))
-sigs_top_10_atac = [mean([full_region(gene, ind, flanking_region) for ind in atac_inds]) for gene in top_ten_percent]
-sigs_bottom_10_atac = [mean([full_region(gene, ind, flanking_region) for ind in atac_inds]) for gene in bottom_ten_percent]
-display(plot([scatter(x=1:length(sigs_top_10_atac), y=mean(sigs_top_10_atac), name="Top 10%"), scatter(x=1:length(sigs_bottom_10_atac), y=mean(sigs_bottom_10_atac), name="Bottom 10%")], Layout(title="ATAC")))
-
 te_dist_df = CSV.read(te_dist_file, DataFrame)
-
 k27_df = sig_regions(filtered_gene_list, expr_vec, k27_inds, "K27ac")
 k27_mean_cor = mean(k27_df.Cor)
 k4_df = sig_regions(filtered_gene_list, expr_vec, k4_inds, "K4me3")
@@ -254,13 +253,12 @@ k9_mean_cor = mean(k9_df.Cor)
 atac_df = sig_regions(filtered_gene_list, expr_vec, atac_inds, "ATAC")
 atac_mean_cor = mean(atac_df.Cor)
 
-sig_region_df = DataFrame("Mark" => ["K27ac", "K4me3", "K9me3", "ATAC"],
-                        "Start" => [k27_df.Pos[1], k4_df.Pos[1], k9_df.Pos[1], atac_df.Pos[1]],
-                        "End" => [k27_df.Pos[end], k4_df.Pos[end], k9_df.Pos[end], atac_df.Pos[end]])
+sig_region_df = DataFrame("Mark" => ["K27ac",
+                                     "K4me3",
+                                     "K9me3",
+                                     "ATAC"],
+                          "Start" => [k27_df.Pos[1], k4_df.Pos[1], k9_df.Pos[1], atac_df.Pos[1]],
+                          "End" => [k27_df.Pos[end], k4_df.Pos[end], k9_df.Pos[end], atac_df.Pos[end]],
+                          "MeanCor" => [k27_mean_cor, k4_mean_cor, k9_mean_cor, atac_mean_cor])
 
 CSV.write("./data/sig_regions.csv", sig_region_df)
-
-# plot([scatter(x=1:length(k27_df.Cor),y=k27_df.Cor), scatter(x=1:length(k27_df.Pval), y=k27_df.Pval)], Layout(title="K27ac"))
-# plot([scatter(x=1:length(k4_df.Cor),y=k4_df.Cor), scatter(x=1:length(k4_df.Pval), y=k4_df.Pval)], Layout(title="K4me3"))
-# plot([scatter(x=1:length(k9_df.Cor),y=k9_df.Cor), scatter(x=1:length(k9_df.Pval), y=k9_df.Pval)], Layout(title="K9me3"))
-# plot([scatter(x=1:length(atac_df.Cor),y=atac_df.Cor), scatter(x=1:length(atac_df.Pval), y=atac_df.Pval)], Layout(title="ATAC"))

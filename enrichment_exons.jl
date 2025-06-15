@@ -183,7 +183,11 @@ chroms = mapreduce((chrom, exon_n) -> repeat([String(chrom)], exon_n),
                     vcat, 
                 transcript_df.Chrom, 
                 transcript_df.nExon)
-starts = mapreduce((start, chrom_start) -> parse.(Int, split(start, ",")[1:end-1]) .+ chrom_start .+ 1, vcat, transcript_df.Starts, transcript_df.TranscriptStart)
+starts = mapreduce((start, chrom_start) -> 
+    parse.(Int, split(start, ",")[1:end-1]) .+ chrom_start .+ 1, 
+    vcat, 
+    transcript_df.Starts, 
+    transcript_df.TranscriptStart)
 ends = mapreduce(width -> parse.(Int, split(width, ",")[1:end-1]), 
                 vcat, 
                 transcript_df.Widths) .+ (starts .- 1)
@@ -210,7 +214,6 @@ for chr in keys(tree_dict)
 
 end
 
-
 # Calculate the % of total exon bases overlapping an H3K9me3 peak in at least one sample:
 exon_df_merged = DataFrame()
 for (chr,tree) in tree_dict
@@ -225,11 +228,10 @@ end
 
 select!(exon_df_merged, [4, 1, 2])
 rename!(exon_df_merged, [:Chromosome, :Start, :End])
-exon_df_merged.Length = exon_df_merged.End .- exon_df_merged.Start .+ 1 
+exon_df_merged.Length = exon_df_merged.End .- exon_df_merged.Start .+ 1
 exon_df_merged.OverlapPerc = zeros(Float64, nrow(exon_df_merged))
 
 signal_dict = Dict(chrom.name => chrom.signal for chrom in peak_data.samples[1].chroms)
-
 
 for i in 1:nrow(exon_df_merged)
     chrom = exon_df_merged.Chromosome[i]

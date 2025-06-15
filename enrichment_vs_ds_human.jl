@@ -61,7 +61,7 @@ select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # Get the global mean enrichment for H3K9me3 from TSS-500:TSS+500 for all coding genes
 global_mean = mean([
-                mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i)) 
+                mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
                 for i in eachindex(human_ref.genes[2][1].samples)])
                 for gene in human_ref.genes[2]
                 if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1]
@@ -104,59 +104,17 @@ serialize("./data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
 bar_plots, p_vals, means_vecs = plot_bar(paralog_data,
                     human_ref.genes[2],
                     [collect(eachindex(human_ref.genes[2][1].samples))],
-                    [GeneRange(REGION(), REGION(), 0, 0)],
+                    [GeneRange(TSS(), TES(), -500, 500)],
                     [global_mean],
                     [0,4],
                     true,
-                    true)
+                    true);
+
+p_vals_perm_cor = get_cor(paralog_data,
+                          GeneRange(TSS(),TES(), -500, 500),
+                          [1:16...],
+                          human_ref,
+                          global_mean)
 
 serialize("./data/julia_serialized/human_bar_plots_dS.jls", bar_plots)
 serialize_to_json("./data/julia_serialized/means_vecs_dS_human.json", means_vecs)
-
-quantile_labels = cut(paralog_data.dS, 10)
-quantile_vals = levelcode.(quantile_labels)
-low_ds_paralogs = paralog_data[quantile_vals .<= 10, :]
-
-has_k9me3 = map(eachrow(low_ds_paralogs)) do row
-    gene = get(human_ref, row.GeneID)
-    paralog = get(human_ref, row.ParalogID)
-
-    if gene === nothing || paralog === nothing
-        @warn "Missing gene or paralog: $(row.GeneID) or $(row.ParalogID)"
-        return false
-    end
-
-    gene_enrich = mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
-                        for i in eachindex(gene.samples)])
-    paralog_enrich = mean([mean(getsiginrange(paralog, GeneRange(TSS(), TES(), -500, 500), i))
-                        for i in eachindex(paralog.samples)])
-    return [sum(gene_enrich) > 0, sum(paralog_enrich) > 0]
-end
-
-has_k9me3_n_dups = count(reduce(vcat, has_k9me3))
-no_k9me3_n_dups = nrow(low_ds_paralogs) * 2 - has_k9me3_n_dups
-
-missing_genes = [] # All missing genes have chromosome info with the following string: "chromosome:GRCh38:CHR_H", which are
-                   # all patch chromosomes/sequences
-has_k9me3 = map(eachrow(singletons)) do row
-    gene = get(human_ref, row.GeneID)
-
-    if ismissing(gene)
-        push!(missing_genes, row.GeneID)
-        return missing
-
-    end
-
-    gene_enrich = mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i)) 
-                        for i in eachindex(gene.samples)])
-    return sum(gene_enrich) > 0
-end
-
-has_k9me3_n_sing = count(skipmissing(has_k9me3))
-no_k9me3_n_sing = (nrow(singletons) - count(ismissing, has_k9me3)) - has_k9me3_n_sing
-
-cont_table_k9me3 = [has_k9me3_n_sing has_k9me3_n_dups; 
-                    no_k9me3_n_sing no_k9me3_n_dups]
-
-pvalue(FisherExactTest(cont_table_k9me3[1,1], cont_table_k9me3[1,2], 
-                       cont_table_k9me3[2,1], cont_table_k9me3[2,2]))

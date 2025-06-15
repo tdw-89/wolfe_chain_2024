@@ -41,7 +41,7 @@ function parse_quantile(q::String; digs::Int=RANGE_PRECISION)
     lval = round(parse(Float64, mat["lval"]), digits=digs)
     uval = round(parse(Float64, mat["uval"]), digits=digs)
     ubound = mat["ubound"]
-    return lbound * lval * ", " * uval * ubound
+    return lbound * string(lval) * ", " * string(uval) * ubound
 
 end
 
@@ -72,8 +72,6 @@ function sortNparsequantrange(quant_labels::Vector{String}; digs::Int=RANGE_PREC
 
     return ret_labels
 end
-
-
 
 """
 NOTES: 
@@ -228,7 +226,7 @@ Get the signal for a gene in a given sample in the given region around the TSS s
         The return value is a vector with the signal values for the given region presented as if in the + strand orientation.
             e.g. 5' -> 3' => 1 -> 4000
 """
-function getsiginrange(gene::Gene, gene_range::GeneRange, sample_ind=1; signal_type::String="peak")
+function getsiginrange_old(gene::Gene, gene_range::GeneRange, sample_ind=1; signal_type::String="peak")
 
     if sample_ind ∉ 1:length(gene.samples)
 
@@ -327,7 +325,7 @@ function getsiginrange(gene::Gene, gene_range::GeneRange, sample_ind=1; signal_t
     end
 end
 
-function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
+function siginrange_old(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
     if sample_ind ∉ 1:length(gene.samples)
 
         error("Invalid sample index for gene $(gene.id).")
@@ -442,7 +440,7 @@ function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::B
     end
 end
 
-function getsiginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
+function getsiginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true, clamped::Bool=true, pad_clamped::Bool=true)
     if sample_ind ∉ 1:length(gene.samples)
 
         error("Invalid sample index for gene $(gene.id).")
@@ -462,18 +460,35 @@ function getsiginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_dat
     signal = gene.strand == '+' ? gene.regions[1].binsignals[sample_ind] : reverse(gene.regions[1].binsignals[sample_ind])
     gene_len = gene.gene_end - gene.gene_start + 1
     tss = gene.strand == '+' ? (gene.gene_start - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_end) + 1
-    tes = gene.strand == '+' ? (gene.gene_end - gene.regions[1].region_start) + 1 : (gene.regions[1].region_end - gene.gene_start) + 1
-    range_start = isa(sig_range.range_start, REGION) ? 1 + sig_range.start_offset : 
+    tes = tss + gene_len - 1
+    range_start = isa(sig_range.range_start, REGION) ? 1 : 
                    isa(sig_range.range_start, TES) ? tes + sig_range.start_offset :
-                   isa(sig_range.range_start, TSS) && isa(sig_range.start_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.start_offset * 100) :
+                   isa(sig_range.range_start, TSS) && isa(sig_range.start_offset_type, PERCENTAGE) ? tss + round(Int, (gene_len / 100) * sig_range.start_offset) :
                    tss + sig_range.start_offset
-    range_stop = isa(sig_range.range_stop, REGION) ? length(signal) + sig_range.stop_offset : 
+    range_stop = isa(sig_range.range_stop, REGION) ? length(signal) : 
                  isa(sig_range.range_stop, TES) ? tes + sig_range.stop_offset :
-                 isa(sig_range.range_stop, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE) ? tss + round(Int, gene_len / sig_range.stop_offset * 100) :
+                 isa(sig_range.range_stop, TSS) && isa(sig_range.stop_offset_type, PERCENTAGE) ? tss + round(Int, (gene_len / 100) * sig_range.stop_offset) :
                  tss + sig_range.stop_offset
 
-    try 
-        return signal[range_start:range_stop]
+    pad_left = 0
+    pad_right = 0
+    if clamped
+        if pad_clamped
+            start_clamped = clamp(range_start, 1, length(signal) + 1)
+            stop_clamped = clamp(range_stop, 0, length(signal))
+            # println("$tss $tes $range_start $range_stop $start_clamped $stop_clamped")
+            pad_left = abs(start_clamped - range_start)
+            pad_right = abs(stop_clamped - range_stop)
+            range_start = start_clamped
+            range_stop = stop_clamped
+        else
+            range_start = clamp(range_start, 1, length(signal) + 1)
+            range_stop = clamp(range_stop, 0, length(signal))
+        end
+    end
+    try
+        return vcat(
+            ones(pad_left) * -1, signal[range_start:range_stop], ones(pad_right) * -1)
     catch err
         if isa(err, BoundsError)
             return missing
@@ -483,11 +498,7 @@ function getsiginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_dat
     end
 end
 
-
-
-
-
-function siginrange2(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
+function siginrange(gene::Gene, sig_range::GeneRange, sample_ind=1; peak_data::Bool=true)
     if sample_ind ∉ 1:length(gene.samples)
 
         error("Invalid sample index for gene $(gene.id).")
@@ -1598,44 +1609,6 @@ function plot_bar_expr(expr_df::DataFrame,
     end
 
     return p_values, means_vecs
-end
-
-function getavgenrich(gene_list::Vector{F}, sample_ind::Int; upstream_lim::Int=1999, downstream_lim::Int=2000, signal_type::String="peak") where F <: Feature
-
-    @error "under construction"
-    # region_length = length(-upstream_lim:downstream_lim)
-    # avg_vec = zeros(region_length)
-    # n_counted = 0
-
-    # for gene in gene_list
-
-    #     sig_val = getsiginrange(gene, sample_ind, upstream_lim, downstream_lim, signal_type=signal_type)
-
-    #     if isnothing(sig_val)
-            
-    #         println("skipping $(gene.id)")
-    #         continue
-    #     end
-
-    #     avg_vec += sig_val
-    #     n_counted += 1
-    # end
-
-    # return avg_vec ./ n_counted
-end
-
-function getcountenrich(gene_list::Vector{F}, sample_ind::Int; upstream_lim::Int=1999, downstream_lim::Int=2000) where F <: Feature
-
-    @error "under construction"
-    # region_length = length(-upstream_lim:downstream_lim)
-    # count_vec = zeros(Int, region_length)
-
-    # for gene in gene_list
-
-    #     count_vec += getsiginrange(gene, sample_ind, upstream_lim, downstream_lim)
-    # end
-
-    # return [count_vec length(gene_list) .- count_vec] 
 end
 
 function bootstrapavgenrich(gene_list::Vector{F}, sample_ind::Int, sample_size::Int, n_bootstraps::Int; upstream_lim::Int=1999, downstream_lim::Int=2000) where F <: Feature

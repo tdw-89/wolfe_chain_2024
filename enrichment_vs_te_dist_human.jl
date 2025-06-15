@@ -11,7 +11,7 @@ include("custom_lib/enrichment_utils.jl")
 include("custom_lib/te_utils.jl")
 
 reload_peak_data = false
-te_type = "DNA"
+te_type = "TE"
 
 # Peak files
 # chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
@@ -61,7 +61,7 @@ for id in te_dist_df.GeneID
     gene = get(ref_genome, id)
     
     has_k9 = any([
-        any(getsiginrange(gene, GeneRange(REGION(), REGION(), 0, 0), ind)) for ind in eachindex(gene.samples)
+        any(sum(getsiginrange(gene, GeneRange(REGION(), REGION(), 0, 0), ind)) > 0) for ind in eachindex(gene.samples)
     ])
     if has_k9
         push!(ids_with_k9me3, id)
@@ -164,7 +164,7 @@ yaxis=attr(gridcolor="lightgray",
            gridwidth=1.5))
 ))
 
-# Are genes with H3K9me3 more likely to be triplosensitive? (A: No)
+# Are paralogs with H3K9me3 more likely to be triplosensitive? (A: No)
 pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], 
                         indiv_df.pTriplo[indiv_df.HasK9me3 .== false]))
 

@@ -232,39 +232,3 @@ display(plot(scatter(x=rollmean(df_adj[:,"dS"], 100),
                      text=df_adj.GeneID, 
                      marker_size=5), 
             Layout(xaxis=attr(title="dS"), yaxis=attr(title="log2(expression)", range=[0, 4]))))
-
-##########################################
-# SHOULD BE IN (A) SEPARATE SCRIPT(S) ↓↓ #
-##########################################
-#=
-# Get the correlation between pair-average peak enrichment and dS and
-k27ac_inds = [1,4,7]
-pair_avg_k27ac = [avg_enrich((get(ref_genome, pair[1]), get(ref_genome, pair[2])), k27ac_inds, GeneRange(TSS(), TES(), 0, 0)) for pair in zip(paralog_data.GeneID, paralog_data.ParalogID)]
-insertcols!(paralog_data, :K27ac => pair_avg_k27ac)
-k4me3_inds = [2,5,8]
-pair_avg_k4me3 = [avg_enrich((get(ref_genome, pair[1]), get(ref_genome, pair[2])), k4me3_inds, GeneRange(TSS(), TES(), 0, 0)) for pair in zip(paralog_data.GeneID, paralog_data.ParalogID)]
-insertcols!(paralog_data, :K4me3 => pair_avg_k4me3)
-k9me3_inds = [3,6,9]
-pair_avg_k9me3 = [avg_enrich((get(ref_genome, pair[1]), get(ref_genome, pair[2])), k9me3_inds, GeneRange(TSS(), TES(), 0, 0)) for pair in zip(paralog_data.GeneID, paralog_data.ParalogID)]
-insertcols!(paralog_data, :K9me3 => pair_avg_k9me3)
-atac_inds = [10,11,12]
-pair_avg_atac = [avg_enrich((get(ref_genome, pair[1]), get(ref_genome, pair[2])), atac_inds, GeneRange(TSS(), TES(), 0, 0)) for pair in zip(paralog_data.GeneID, paralog_data.ParalogID)]
-insertcols!(paralog_data, :ATAC => pair_avg_atac)
-
-display(plot([box(y=paralog_data.K27ac[quantile_vals .== q], name="dS quantile $q") for q in sort(unique(quantile_vals))], Layout(yaxis_title="K27ac enrichment")))
-display(plot([box(y=paralog_data.K4me3[quantile_vals .== q], name="dS quantile $q") for q in sort(unique(quantile_vals))], Layout(yaxis_title="K4me3 enrichment")))
-display(plot([box(y=paralog_data.K9me3[quantile_vals .== q], name="dS quantile $q") for q in sort(unique(quantile_vals))], Layout(yaxis_title="K9me3 enrichment")))
-display(plot([box(y=paralog_data.ATAC[quantile_vals .== q], name="dS quantile $q") for q in sort(unique(quantile_vals))], Layout(yaxis_title="ATAC enrichment")))
-
-low_ds_data = paralog_data[quantile_vals .<= 2,:]
-plot([box(y=low_ds_data[low_ds_data.K9me3 .== 0,:].AvgExpr), box(y=low_ds_data[low_ds_data.K9me3 .> 0,:].AvgExpr)])
-
-# # Correlation between dS and peak enrichment
-k27ac_corr = cor(paralog_data.dS, paralog_data.K27ac), pvalue(CorrelationTest(paralog_data.dS, paralog_data.K27ac))
-k4me3_corr = cor(paralog_data.dS, paralog_data.K4me3), pvalue(CorrelationTest(paralog_data.dS, paralog_data.K4me3))
-k9me3_corr = cor(paralog_data.dS, paralog_data.K9me3), pvalue(CorrelationTest(paralog_data.dS, paralog_data.K9me3))
-atac_corr = cor(paralog_data.dS, paralog_data.ATAC), pvalue(CorrelationTest(paralog_data.dS, paralog_data.ATAC))
-adjusted = adjust([k27ac_corr[2], k4me3_corr[2], k9me3_corr[2], atac_corr[2]],BenjaminiHochberg())
-ds_peak_cors = DataFrame(:peak => ["K27ac", "K4me3", "K9me3", "ATAC"], :cor => [k27ac_corr[1], k4me3_corr[1], k9me3_corr[1], atac_corr[1]], :adj_pval => adjusted)
-
-=#

@@ -1,35 +1,47 @@
 library(dplyr)
 library(ComplexUpset)
 library(ggplot2)
-
-# Function to calculate averages
-calc_averages <- function(df, sets, val_col) {
-  comb <- expand.grid(rep(list(0:1), length(sets)))
-  colnames(comb) <- sets
-  comb <- comb[rowSums(comb) > 0, ]
-  comb$avg_value <- apply(comb, 1, function(row) {
-    subset <- df[apply(df[sets] == row, 1, all), ]
-    mean(subset[, val_col], na.rm = TRUE)
-  })
-  comb
-}
-
+library(coro)
 
 # low_ds_table <- "./data/all_ds_df.csv"
 low_ds_table <- "./data/low_ds_df.csv"
 
 # Load the data as a df
 low_ds_df <- read.csv(low_ds_table)
+set_names <- c("H3K9me3",
+               "H3K27ac",
+               "H3K4me3",
+               "ATAC")
+names(low_ds_df) <- c("Gene ID", set_names, "Expression")
 low_ds_df[, 2:5] <- lapply(low_ds_df[, 2:5], function(col) {
   return(as.integer(factor(col)) - 1)
 })
 
-set_names <- c("HasK9me3",
-               "HasK27ac",
-               "HasK4me3",
-               "HasATAC")
+h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 == T])
+non_h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 != T])
+wilcox.test(low_ds_df$Expression[low_ds_df$H3K9me3 == T], 
+            low_ds_df$Expression[low_ds_df$H3K9me3 != T])
 
-expr_avgs <- calc_averages(low_ds_df, set_names, 6)
+medExpr <- generator(function() {
+  for (x in c(
+    non_h3k9me3_med,
+    non_h3k9me3_med,
+    non_h3k9me3_med,
+    non_h3k9me3_med,
+    non_h3k9me3_med,
+    non_h3k9me3_med,
+    h3k9me3_med,
+    h3k9me3_med,
+    h3k9me3_med,
+    h3k9me3_med,
+    h3k9me3_med,
+    h3k9me3_med,
+    non_h3k9me3_med
+  )) {
+    yield(x)
+  }
+})
+f <- medExpr()
 
 # Create the upset plot theme
     # Text
@@ -45,7 +57,21 @@ plt_theme$default[[1]]$text$size <- 18
 upset(low_ds_df,
       set_names,
       annotations = list(
-        "Expression" = ggplot(mapping=aes(x = intersection, y = Expr)) +
-          geom_boxplot(lwd=1.08)
+        "Expression" = ggplot(
+            mapping=aes(
+              x = intersection, 
+              y = Expression
+            )
+          ) +
+          geom_boxplot(lwd=1.08) +
+          stat_summary(
+            fun = NULL,
+            fun.min = NULL,
+            fun.max = f,
+            geom = "errorbar", # Use errorbar to draw a horizontal line segment
+            color = "navyblue",
+            linewidth = 1.3,
+            width = 1
+          )
       ),
       themes = plt_theme)

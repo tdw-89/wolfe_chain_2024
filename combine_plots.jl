@@ -1,7 +1,7 @@
 using Serialization
 using PlotlyJS
 
-save_plots = false
+save_plots = true
 box_plots = true
 x_tick_font = attr(family="Times New Roman", size=26)
 y_tick_font = attr(family="Times New Roman", size=26)
@@ -145,10 +145,8 @@ for i in eachindex(sample_names)
     if save_plots
         savefig(fig, joinpath(plot_save_dir, "proposal_combined_plot_$(sample_names[i])_dS.html"))
     
-    else
-        display(fig)
-
     end
+    display(fig)
 end
 
 # Human:
@@ -210,13 +208,13 @@ relayout!(fig_h, shapes = reduce(vcat,
         for val in x1_vals],
         [   # Vertical lines for subplots 2 & 5
         (type = "line",
-         x0 = val, 
-         x1 = val, 
-         y0 = 0, 
-         y1 = 1, 
-         xref = "x2", 
-         yref = "paper", 
-         line = (color = line_color, 
+         x0 = val,
+         x1 = val,
+         y0 = 0,
+         y1 = 1,
+         xref = "x2",
+         yref = "paper",
+         line = (color = line_color,
                  dash = line_type))
         for val in x2_vals],
         [   # Vertical lines for subplots 3 & 6
@@ -227,18 +225,14 @@ relayout!(fig_h, shapes = reduce(vcat,
          y1 = 1, 
          xref = "x3", 
          yref = "paper", 
-         line = (color = line_color, 
+         line = (color = line_color,
                  dash = line_type))
         for val in x3_vals]
     ]
 ))
 
-
-
 if save_plots
     savefig(fig_h, joinpath(plot_save_dir, "combined_plot_H3K9me3_dS_human.html"))
 
-else
-    display(fig_h)
-
 end
+display(fig_h)
