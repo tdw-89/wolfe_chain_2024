@@ -41,11 +41,11 @@ te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
 pred_te_coord_file = "./blacklists/predicted_te_combined.csv"
 
 # Genome data
-gff_source = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 
 # Load genome data
 ref_genome = loadgenome(gff_source, chrom_lengths_file)

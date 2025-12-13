@@ -7,10 +7,10 @@ library(tools)
 library(ggplot2)
 
 # Files
-# ensembl_99_gff <- "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-ensembl_99_lengths <- "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-repeat_data_file <- "../../../../data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz"
-peak_file <- "./data/human_h3k9me3_avg.bed"
+# ensembl_99_gff <- "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+ensembl_99_lengths <- "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+repeat_data_file <- "../../dicty_data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz"
+peak_file <- "../../dicty_data/human_h3k9me3_avg.bed"
 
 # Load the averaged peak data
 peak_gr <- import.bed(peak_file)

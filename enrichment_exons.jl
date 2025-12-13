@@ -123,11 +123,11 @@ IntervalTrees.IntervalValue(interval::Interval, value) = IntervalValue(first(int
 Base.delete!(tree::IntervalTree, interval::IntervalValue) = Base.delete!(tree, Interval(interval))
 
 # Files
-peak_data_serialized_file = "./data/julia_serialized/human_h3k9me3_exper.jls"
-num_chrom_cds_id_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/cds_ids_num_chroms.txt"
-transcript_gtf_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99_transcripts.bed"
-paralog_file = "./data/filtered/human_paralog_info_filt.csv"
-singleton_file = "./data/filtered/human_singletons_filt.csv"
+peak_data_serialized_file = "../../dicty_data/julia_serialized/human_h3k9me3_exper.jls"
+num_chrom_cds_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/cds_ids_num_chroms.txt"
+transcript_gtf_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99_transcripts.bed"
+paralog_file = "../../dicty_data/filtered/human_paralog_info_filt.csv"
+singleton_file = "../../dicty_data/filtered/human_singletons_filt.csv"
 
 # Load the numbered chromosome coding gene IDs
 coding_ids = readlines(num_chrom_cds_id_file)
@@ -243,7 +243,7 @@ for i in 1:nrow(exon_df_merged)
     
 end
 
-CSV.write("./data/human_h3k9me3_exon_enrichment$(GENE_TYPE in ["singletons", "duplicates"] ? "_$GENE_TYPE" : "").csv", exon_df_merged)
+CSV.write("../../dicty_data/human_h3k9me3_exon_enrichment$(GENE_TYPE in ["singletons", "duplicates"] ? "_$GENE_TYPE" : "").csv", exon_df_merged)
 
 # Calculate the weighted mean
 total_bases = sum(exon_df_merged.Length)
@@ -253,8 +253,8 @@ weighted_mean = (total_signal_sum / total_bases) * 100
 # Comparison of singletons to duplicates:
 if RUN_COMPARISON
     using HypothesisTests
-    singleton_df = CSV.read("./data/human_h3k9me3_exon_enrichment_singletons.csv", DataFrame)
-    duplicate_df = CSV.read("./data/human_h3k9me3_exon_enrichment_duplicates.csv", DataFrame)
+    singleton_df = CSV.read("../../dicty_data/human_h3k9me3_exon_enrichment_singletons.csv", DataFrame)
+    duplicate_df = CSV.read("../../dicty_data/human_h3k9me3_exon_enrichment_duplicates.csv", DataFrame)
     weighted_vals_singleton = singleton_df.OverlapPerc .* singleton_df.Length
     weighted_vals_duplicate = duplicate_df.OverlapPerc .* duplicate_df.Length
     p_val = pvalue(MannWhitneyUTest(weighted_vals_singleton, weighted_vals_duplicate))

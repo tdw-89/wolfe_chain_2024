@@ -12,11 +12,11 @@ filter_mito = true
 
 # Blacklist files
 blacklist_file = "../blacklists/blacklist_all.tsv"
-mito_file = "../../../../data/AX4/genome_ver_2_7/gff3/chromosome_M.gff"
-all_nc_file = "../../../../data/AX4/genome_ver_2_7/nc_genes.txt" # some overlap with IDs in 'blacklist_file', also includes 'splice transcripts'
+mito_file = "../../dicty_data/AX4/genome_ver_2_7/gff3/chromosome_M.gff"
+all_nc_file = "../../dicty_data/AX4/genome_ver_2_7/nc_genes.txt" # some overlap with IDs in 'blacklist_file', also includes 'splice transcripts'
 
 # Paralog file
-full_paralog_file = "../../../../data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
+full_paralog_file = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
 
 # Load paralog_data
 full_paralog_data = CSV.read(full_paralog_file, DataFrame)
@@ -64,7 +64,7 @@ if filter_ax4_dup_region
 end
 
 if filter_mito
-    chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/chromosome_lengths.txt"
+    chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/chromosome_lengths.txt"
     include("./custom_lib/load_gff.jl")
     mito_ref = loadgff(mito_file, chrom_lengths_file; feature_type = "gene")
     mito_ids = [gene for gene in mito_ref.genes[1]]
@@ -76,4 +76,4 @@ end
 filter!(row -> startswith(row.GeneID, "DDB_"), singleton_data)
 
 # Save
-CSV.write("./data/filtered/singleton_filt.tsv", singleton_data)
+CSV.write("../../dicty_data/filtered/singleton_filt.tsv", singleton_data)

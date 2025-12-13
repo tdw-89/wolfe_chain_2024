@@ -17,18 +17,18 @@ include("./custom_lib/enrichment_utils.jl")
 include("./custom_lib/misc_utils.jl")
 
 # Genome data
-gff_data = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Expression data
-expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 
 # Paralog data
-paralog_file = "./data/filtered/paralog_filt.tsv"
+paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)

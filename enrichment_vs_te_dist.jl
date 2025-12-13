@@ -14,17 +14,17 @@ id_method = "dS" #
 id_threshold = 3
 
 # Peak files
-# chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
+# chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 
 # Genome data
-gff_source = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-paralog_file = "./data/filtered/paralog_filt.tsv"
-final_gene_list = "./data/filtered/final_gene_list.txt"
-te_dist_file = "./data/te_distance.csv"
-# te_dist_file = "./data/repeat_distance.csv"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
+final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
+te_dist_file = "../../dicty_data/te_distance.csv"
+# te_dist_file = "../../dicty_data/repeat_distance.csv"
 
 font_family = "Times New Roman"
 box_plt_blue(data, name) = box(y=data, 
@@ -74,7 +74,7 @@ peak_files = [readdir(chip_peak_file_dir, join=true); readdir(atac_peak_file_dir
 peak_files = filter(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_files = filter(fn -> !contains(fn, r"_S[AB]+_"), peak_files)
 peak_data = binpeaks(peak_files, chrom_lengths_file)
-significant_regions = CSV.read("./data/sig_regions.csv", DataFrame)
+significant_regions = CSV.read("../../dicty_data/sig_regions.csv", DataFrame)
 addtogenes!(ref_genome, peak_data)
 
 # Which genes have H3K9me3?

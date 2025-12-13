@@ -14,21 +14,21 @@ ng86 = false
 lwl85 = false
 
 # Paralog file
-full_paralog_file = "../../../../data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
+full_paralog_file = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
-# dictybase_cds_id_file = "../../../../data/AX4/genome_ver_2_7/fastas/dicty_primary_cds_ids.txt"
-ensembl_cds_id_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
+# dictybase_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds_ids.txt"
+ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 
 # Load paralog data
 paralog_data = CSV.read(full_paralog_file, DataFrame, delim='\t')
 singleton_data = filter(row -> ismissing(row[15]), paralog_data)
 singleton_ids = unique(singleton_data[!, 1])
-ds_estimates = CSV.read("./data/filtered/dS_df.csv", DataFrame)
+ds_estimates = CSV.read("../../dicty_data/filtered/dS_df.csv", DataFrame)
 
 # Save the unfiltered singleton list
-CSV.write("./data/singleton_list_unfilt.txt", DataFrame(GeneID = singleton_data[!,1]))
+CSV.write("../../dicty_data/singleton_list_unfilt.txt", DataFrame(GeneID = singleton_data[!,1]))
 
 # Load blacklist
 blacklist = CSV.read(blacklist_file, DataFrame)
@@ -94,7 +94,7 @@ filter!(row -> (row.GeneID, row.ParalogID) in rbh_id_pairs, paralog_data)
 #    all(paralog_data_f.GeneID .== paralog_data_r.ParalogID)
 
 # filter genes with no expression in any sample:
-expr_data = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
+expr_data = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
 expr_data = CSV.read(expr_data, DataFrame)
 filter!(row -> row.GeneID in expr_data.GeneID && row.ParalogID in expr_data.GeneID, paralog_data)
 filter!(id -> id in expr_data.GeneID, singleton_ids)
@@ -106,7 +106,7 @@ if ds_est
     if for_ds_calc
         # Write the pair IDs for the dS calculation pipeline
         id_pairs = select(paralog_data, [1,2])
-        CSV.write("./data/filtered/paralog_filt_id_pairs.tsv", id_pairs, delim='\t', header=false)
+        CSV.write("../../dicty_data/filtered/paralog_filt_id_pairs.tsv", id_pairs, delim='\t', header=false)
 
     else
 
@@ -120,14 +120,14 @@ if ds_est
 
         end
 
-        CSV.write("./data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
+        CSV.write("../../dicty_data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
     end
 else
-    CSV.write("./data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
+    CSV.write("../../dicty_data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
 
 end
 
-CSV.write("./data/filtered/singleton_filt.tsv", DataFrame(:GeneID => singleton_ids), delim='\t', header=true)
+CSV.write("../../dicty_data/filtered/singleton_filt.tsv", DataFrame(:GeneID => singleton_ids), delim='\t', header=true)
 
 #=
 OLD_METHOD:
@@ -157,7 +157,7 @@ OLD_METHOD:
 
 NEWOLD_METHOD:
 
-    paralog_data = CSV.read("../../../../data/wang_et_al/paralogs/Dicty.GeneParalogPairs.v51.csv", DataFrame)
+    paralog_data = CSV.read("../../dicty_data/wang_et_al/paralogs/Dicty.GeneParalogPairs.v51.csv", DataFrame)
     filter!(row -> row.avg_pct_id >= 30, paralog_data)
     filter!(row -> row.ddiscoideum_eg_paralog_orthology_type != "gene_split", paralog_data)
     select!(paralog_data, [2,4,10,11,13])

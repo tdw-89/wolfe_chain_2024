@@ -11,18 +11,18 @@ include("../custom_lib/load_gff.jl")
 include("../custom_lib/te_utils.jl")
 
 # Genome data:
-gff_source = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-chrom_names_file_db = "../../../../../data/AX4/genome_ver_2_7/chromosome_names.csv"
-paralog_file = "../data/filtered/paralog_filt.tsv"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+chrom_names_file_db = "../../dicty_data/AX4/genome_ver_2_7/chromosome_names.csv"
+paralog_file = ".../../dicty_data/filtered/paralog_filt.tsv"
 
 # Predicted TE files:
 
     # dictybase:
-tes_dictybase = "../../../../../data/AX4/genome_ver_2_7/dicty_repeats-families.stk"
+tes_dictybase = "../../dicty_data/AX4/genome_ver_2_7/dicty_repeats-families.stk"
 
     # Ensembl 52:
-tes_ensembl = "../../../../../data/AX4/genome_ver_2_7/repeat_modeler_output/RM_2530911.TueFeb132059322024/families-classified.stk"
+tes_ensembl = "../../dicty_data/AX4/genome_ver_2_7/repeat_modeler_output/RM_2530911.TueFeb132059322024/families-classified.stk"
 
 # mapped TEs file:
 mapped_tes_file = "ensembl_te_ids_full.tsv"

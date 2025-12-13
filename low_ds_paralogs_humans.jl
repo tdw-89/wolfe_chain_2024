@@ -11,17 +11,17 @@ include("./custom_lib/load_gff.jl")
 include("./custom_lib/enrichment_utils.jl")
 include("./custom_lib/misc_utils.jl")
 
-human_gff = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-human_paralog_info = "./data/filtered/human_paralog_info_filt.csv"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-singleton_list_file = "./data/filtered/human_singletons_filt.csv"
-paralog_file = "./data/filtered/human_paralog_info_filt.csv"
+human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+human_paralog_info = "../../dicty_data/filtered/human_paralog_info_filt.csv"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+singleton_list_file = "../../dicty_data/filtered/human_singletons_filt.csv"
+paralog_file = "../../dicty_data/filtered/human_paralog_info_filt.csv"
 
 # Load the reference
 ref_genome = loadgenome(human_gff, chrom_lengths_file)
 
 # Load the peak data
-peak_data = deserialize("./data/julia_serialized/human_h3k9me3_exper.jls")
+peak_data = deserialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls")
 
 # Add the peak data to the reference:
 addtogenes!(ref_genome, peak_data)

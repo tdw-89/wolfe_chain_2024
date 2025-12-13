@@ -12,12 +12,12 @@ include("custom_lib/misc_utils.jl")
 reload_peak_data = false
 
 # Files
-human_gff = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-repeat_file = "../../../../data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
-ensembl_cds_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
-peak_data_dir = "../../../../data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+repeat_file = "../../dicty_data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
+ensembl_cds_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
+peak_data_dir = "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
 
 # Add the peak data
 if reload_peak_data
@@ -25,9 +25,9 @@ if reload_peak_data
     peak_files = filter(fn -> endswith(fn, ".bed") || endswith(fn, ".bed.gz"), peak_files)
     peak_files = filter(fn -> contains(fn, "k9me3"), peak_files)
     peak_data = binpeaks(peak_files, chrom_lengths_file)
-    serialize("./data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
+    serialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
 else
-    peak_data = deserialize("./data/julia_serialized/human_h3k9me3_exper.jls")
+    peak_data = deserialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls")
 end
 
 # Average the peak data
@@ -104,7 +104,7 @@ Threads.@threads for i in eachindex(class_family_pairs)
 end
 
 sort!(coverage_df_family, :Coverage, rev=true)
-serialize("./data/julia_serialized/coverage_df3.jls", coverage_df_family)
+serialize("../../dicty_data/julia_serialized/coverage_df3.jls", coverage_df_family)
 
 # Caclulate overlap proportion for coding genes:
 
@@ -158,9 +158,9 @@ end
 coverage_df_family.Coverage[end] = total_signal_sum / coverage_df_family.TotalBases[end]
 coverage_df_family.Overlap[end] = overlap_count / coverage_df_family.TotalN[end]
 # sort!(coverage_df_family, :Coverage, rev=true)
-CSV.write("./data/h3k9me3_coverage_all.csv", coverage_df_family)
+CSV.write("../../dicty_data/h3k9me3_coverage_all.csv", coverage_df_family)
 
 coverage_gdf_family = groupby(coverage_df_family, :Type)
 coverage_df_type = combine(coverage_gdf_family, [:Coverage, :Overlap, :TotalN, :TotalBases] => ((c, o, n, b) -> (Coverage=mean(c, Weights(n)), Overlap=mean(o, Weights(b)), TotalN=sum(n), TotalBases=sum(b)) ) => AsTable)
 sort!(coverage_df_type, :Coverage, rev=true)
-CSV.write("./data/h3k9me3_coverage_type.csv", coverage_df_type)
+CSV.write("../../dicty_data/h3k9me3_coverage_type.csv", coverage_df_type)

@@ -4,8 +4,8 @@ using DataFrames
 re_load_interact_data = false
 
 # STRING protein-protein interaction data:
-prot_interact_file = "../../../../data/mammals/primates/h_sapiens/STRING/9606.protein.links.full.v12.0.txt"
-prot_alias_file = "../../../../data/mammals/primates/h_sapiens/STRING/9606.protein.aliases.v12.0.txt"
+prot_interact_file = "../../dicty_data/mammals/primates/h_sapiens/STRING/9606.protein.links.full.v12.0.txt"
+prot_alias_file = "../../dicty_data/mammals/primates/h_sapiens/STRING/9606.protein.aliases.v12.0.txt"
 
 # Load the protein-protein interaction data:
 prot_interact_df = CSV.read(prot_interact_file, DataFrame)
@@ -37,10 +37,10 @@ if re_load_interact_data
     prot_interact_df.protein2 = map(id -> get(alias_dict, id, id), prot_interact_df.protein2)
 
     # Save the protein-protein interaction data:
-    CSV.write("./data/human_prot_interact.csv", prot_interact_df)
+    CSV.write("../../dicty_data/human_prot_interact.csv", prot_interact_df)
 else
 
-    prot_interact_df = CSV.read("./data/human_prot_interact.csv", DataFrame)
+    prot_interact_df = CSV.read("../../dicty_data/human_prot_interact.csv", DataFrame)
 end
 
 # Create a protein interaction count dictionary:
@@ -52,4 +52,4 @@ end
 
 # Save the protein interaction count dictionary:
 count_df = DataFrame(:gene => collect(keys(prot_interact_count)), :count => collect(values(prot_interact_count)))
-CSV.write("./data/human_prot_interact_count.csv", count_df)
+CSV.write("../../dicty_data/human_prot_interact_count.csv", count_df)

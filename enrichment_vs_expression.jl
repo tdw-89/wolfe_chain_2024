@@ -18,19 +18,19 @@ function serialize_to_json(file_path, vecs)
 end
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
-sig_region_file = "./data/sig_regions.csv"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
+sig_region_file = "../../dicty_data/sig_regions.csv"
 
 # dicty ensembl 52 genome data
-gff_data = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Expression data
-expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
 
 # Save directory
-ser_data_dir = "./data/julia_serialized/"
+ser_data_dir = "../../dicty_data/julia_serialized/"
 
 # MAIN SCRIPT: #
 
@@ -66,7 +66,7 @@ addexpression!(ref_genome, expr_data)
 
 # Filter to genes that have expression data and have 500 bp upstream and 500 downstream before a chromosome end
 filtered_gene_list = [gene for gene in ref_genome.genes[2] if has_expr(gene) && siginrange(gene, GeneRange(TSS(), TES(), -500, 500), peak_data=true)]
-open("./data/filtered/final_gene_list.txt", "w") do file
+open("../../dicty_data/filtered/final_gene_list.txt", "w") do file
     for gene in filtered_gene_list
         println(file, gene.id)
     end

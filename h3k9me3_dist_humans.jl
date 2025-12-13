@@ -4,10 +4,10 @@ using Serialization
 
 include("custom_lib/genomic_data.jl")
 
-exon_coverage_file = "./data/human_h3k9me3_exon_enrichment.csv"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-te_coverage_file = "./data/h3k9me3_coverage_all.csv"
-peak_data_file = "./data/julia_serialized/human_h3k9me3_exper.jls"
+exon_coverage_file = "../../dicty_data/human_h3k9me3_exon_enrichment.csv"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+te_coverage_file = "../../dicty_data/h3k9me3_coverage_all.csv"
+peak_data_file = "../../dicty_data/julia_serialized/human_h3k9me3_exper.jls"
 
 # Load the h3k9me3 peak data
 peak_data = deserialize(peak_data_file)

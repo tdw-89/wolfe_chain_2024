@@ -5,10 +5,10 @@ library(rtracklayer)
 library(dplyr)
 
 # Files
-te_files_dir <- "../../../../data/AX4/genome_ver_2_7/TEs"
-gff_dir <- "../../../../data/AX4/genome_ver_2_7/gff3"
-peak_dir <- "../../../../data/wang_et_al/processed/run_1_ensembl52"
-peak_dir_2 <- "../../../../data/wang_et_al/processed/run_2_ensembl52"
+te_files_dir <- "../../dicty_data/AX4/genome_ver_2_7/TEs"
+gff_dir <- "../../dicty_data/AX4/genome_ver_2_7/gff3"
+peak_dir <- "../../dicty_data/wang_et_al/processed/run_1_ensembl52"
+peak_dir_2 <- "../../dicty_data/wang_et_al/processed/run_2_ensembl52"
 
 # Functions: #
 trim_names <- function(x){

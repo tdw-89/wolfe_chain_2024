@@ -21,10 +21,10 @@ include("custom_lib/misc_utils.jl")
 # end
 
 # Files
-human_gff = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-repeat_file = "../../../../data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
-ensembl_cds_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
+human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+repeat_file = "../../dicty_data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
+ensembl_cds_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
 
 # Load the reference
 human_ref = loadgenome(human_gff, chrom_lengths_file)
@@ -114,5 +114,5 @@ Threads.@threads for i in eachindex(cds_genes)
 end
 
 # Save the distance df
-CSV.write("./data/repeat_distance_human.csv", repeat_dist_df)
-CSV.write("./data/repeat_distance_human_numbered_chroms.csv", filter(row -> row.Scaffold in [["$i" for i in 1:22]; "X"; "Y"], repeat_dist_df))
+CSV.write("../../dicty_data/repeat_distance_human.csv", repeat_dist_df)
+CSV.write("../../dicty_data/repeat_distance_human_numbered_chroms.csv", filter(row -> row.Scaffold in [["$i" for i in 1:22]; "X"; "Y"], repeat_dist_df))

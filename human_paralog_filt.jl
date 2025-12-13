@@ -5,9 +5,9 @@ include("custom_lib/load_gff.jl")
 include("custom_lib/paralog_utils.jl")
 
 # Full paralog info file
-human_paralog_info = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
-cds_id_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/CDS_IDs.txt"
-nmd_id_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/nmd_candidate_ids.txt"
+human_paralog_info = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
+cds_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/CDS_IDs.txt"
+nmd_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/nmd_candidate_ids.txt"
 
 # Load the paralog data
 paralog_data = CSV.read(human_paralog_info, DataFrame)

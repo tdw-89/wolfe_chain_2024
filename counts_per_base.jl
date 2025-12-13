@@ -7,7 +7,7 @@ include("./custom_lib/genomic_data.jl")
 bam_dir = "D:/wang_et_al_new/ChIPseq_trimmed_bams_sorted_nodups/"
 
 # Output directory
-serial_dir = "./data/julia_serialized/"
+serial_dir = "../../dicty_data/julia_serialized/"
 
 # Read in the bam file paths
 input_bam_files = filter(fn -> contains(lowercase(fn), "input") && endswith(fn, ".bam"),readdir(bam_dir, join=true))

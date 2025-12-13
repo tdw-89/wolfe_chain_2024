@@ -23,13 +23,13 @@ function serialize_to_json(file_path, vecs)
 end
 
 # Human genomic data
-human_gff = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-human_paralog_info = "./data/filtered/human_paralog_info_filt.csv"
-peak_data_dir = "../../../../data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-cds_id_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/CDS_IDs.txt"
-nmd_id_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/nmd_candidate_ids.txt"
-singleton_file = "./data/filtered/human_singletons_filt.csv"
+human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+human_paralog_info = "../../dicty_data/filtered/human_paralog_info_filt.csv"
+peak_data_dir = "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+cds_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/CDS_IDs.txt"
+nmd_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/nmd_candidate_ids.txt"
+singleton_file = "../../dicty_data/filtered/human_singletons_filt.csv"
 
 # Load the reference
 human_ref = loadgenome(human_gff, chrom_lengths_file)
@@ -41,10 +41,10 @@ if reload_peak_data
     peak_files = reduce(vcat, [[joinpath(root, fn) for fn in files] for (root, dirs, files) in walkdir(peak_data_dir)])
     filter!(fn -> contains(fn, ".bed"), peak_files)
     peak_data = binpeaks(peak_files, chrom_lengths_file)
-    serialize("./data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
+    serialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
 
 else
-    peak_data = deserialize("./data/julia_serialized/human_h3k9me3_exper.jls")
+    peak_data = deserialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls")
 
 end
 
@@ -78,7 +78,7 @@ tss_enrich = plot_enrich_region(paralog_data,
                                 z_max=4,
                                 return_figs=true)
 
-serialize("./data/julia_serialized/human_tss_enrich_plots_dS.jls", tss_enrich)
+serialize("../../dicty_data/julia_serialized/human_tss_enrich_plots_dS.jls", tss_enrich)
 
 body_enrich = plot_enrich_percent(paralog_data,
                     human_ref.genes[2],
@@ -88,7 +88,7 @@ body_enrich = plot_enrich_percent(paralog_data,
                     z_min=0,
                     z_max=4,
                     return_figs=true)
-serialize("./data/julia_serialized/human_body_enrich_plots_dS.jls", body_enrich)
+serialize("../../dicty_data/julia_serialized/human_body_enrich_plots_dS.jls", body_enrich)
 
 tes_enrich = plot_enrich_region(paralog_data,
                                 human_ref.genes[2],
@@ -99,7 +99,7 @@ tes_enrich = plot_enrich_region(paralog_data,
                                 z_min=0,
                                 z_max=4,
                                 return_figs=true)
-serialize("./data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
+serialize("../../dicty_data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
 
 bar_plots, p_vals, means_vecs = plot_bar(paralog_data,
                     human_ref.genes[2],
@@ -116,5 +116,5 @@ p_vals_perm_cor = get_cor(paralog_data,
                           human_ref,
                           global_mean)
 
-serialize("./data/julia_serialized/human_bar_plots_dS.jls", bar_plots)
-serialize_to_json("./data/julia_serialized/means_vecs_dS_human.json", means_vecs)
+serialize("../../dicty_data/julia_serialized/human_bar_plots_dS.jls", bar_plots)
+serialize_to_json("../../dicty_data/julia_serialized/means_vecs_dS_human.json", means_vecs)

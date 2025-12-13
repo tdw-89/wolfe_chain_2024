@@ -2,10 +2,10 @@ library(rtracklayer)
 library(plyranges)
 
 
-duplicate_file <- "./data/filtered/human_paralog_info_filt.csv"
-blacklist_file <- "../../../../data/mammals/primates/h_sapiens/ENCODE_histone_mods/ENCFF356LFX.bed.gz"
-grch38_ensembl_file <- "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-repeat_data_file <- "../../../../data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz"
+duplicate_file <- "../../dicty_data/filtered/human_paralog_info_filt.csv"
+blacklist_file <- "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods/ENCFF356LFX.bed.gz"
+grch38_ensembl_file <- "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+repeat_data_file <- "../../dicty_data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz"
 
 
 perc_overlap <- function(dup_start, dup_end, black_start, black_end){
@@ -99,6 +99,6 @@ for(i in 1:length(repeat_types)){
   print(paste(i, "done"))
 }
 
-write.csv(overlap_df, "./data/te_blacklist_overlap_info.csv", row.names = F)
+write.csv(overlap_df, "../../dicty_data/te_blacklist_overlap_info.csv", row.names = F)
 
 

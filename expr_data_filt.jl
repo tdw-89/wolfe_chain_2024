@@ -8,11 +8,11 @@ keep_tes = true
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
-ensembl_cds_id_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
+ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 
 # Expression data
-# expr_data_file = "../../../../data/wang_et_al/RNA/kallisto_output_2/normalized_tpm_gene_names_old.tsv"
-expr_data_file = "../../../../data/wang_et_al/RNA/kallisto_output_ensembl52/normalized_tpm_gene_names.tsv"
+# expr_data_file = "../../dicty_data/wang_et_al/RNA/kallisto_output_2/normalized_tpm_gene_names_old.tsv"
+expr_data_file = "../../dicty_data/wang_et_al/RNA/kallisto_output_ensembl52/normalized_tpm_gene_names.tsv"
 
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)
@@ -69,4 +69,4 @@ end
 
 select!(expr_data_combined, Not([pair[2] for pair in rep_pairs]))
 
-CSV.write("./data/filtered/expr_data_filt_kallisto_ensembl52_single$(keep_tes ? "_with_TEs" : "").tsv", expr_data_combined, delim='\t')
+CSV.write("../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single$(keep_tes ? "_with_TEs" : "").tsv", expr_data_combined, delim='\t')

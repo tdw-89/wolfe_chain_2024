@@ -3,8 +3,8 @@ library(ComplexUpset)
 library(ggplot2)
 library(coro)
 
-# low_ds_table <- "./data/all_ds_df.csv"
-low_ds_table <- "./data/low_ds_df.csv"
+# low_ds_table <- "../../dicty_data/all_ds_df.csv"
+low_ds_table <- "../../dicty_data/low_ds_df.csv"
 
 # Load the data as a df
 low_ds_df <- read.csv(low_ds_table)

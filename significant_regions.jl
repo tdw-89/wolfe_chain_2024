@@ -166,32 +166,32 @@ function sig_regions(gene_list, expr_vec, sample_inds, plot_label="Unknown"; sav
                        gridwidth=1.5),
             plot_bgcolor="white"
             )),
-            "./data/saved_figures/significant_regions_$plot_label.html")
+            "../../dicty_data/saved_figures/significant_regions_$plot_label.html")
     end
     return scan_tss(full_df)
 end
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-# chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_16/"
-# h3_peak_dir = "../../../../data/wang_et_al/processed/run_9/peak_files_H3"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
-# peak_dir = "../../../../data/zebrafish/data_from_freddy/"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+# chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_16/"
+# h3_peak_dir = "../../dicty_data/wang_et_al/processed/run_9/peak_files_H3"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
+# peak_dir = "../../dicty_data/zebrafish/data_from_freddy/"
 
 # Genome data
 # ensembl 52 genome data
-gff_data = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-ensembl_cds_id_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
-blacklist_file = "./data/blacklist_with_tes.csv"
-te_dist_file = "./data/te_distance.csv"
+gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
+blacklist_file = "../../dicty_data/blacklist_with_tes.csv"
+te_dist_file = "../../dicty_data/te_distance.csv"
 
 # zebrafish genome data
-# gff_file = "../../../../data/zebrafish/Danio_rerio.GRCz10.91.gff3"
-# chrom_lengths_file = "../../../../data/zebrafish/chromosome_lengths_z10.txt"
+# gff_file = "../../dicty_data/zebrafish/Danio_rerio.GRCz10.91.gff3"
+# chrom_lengths_file = "../../dicty_data/zebrafish/chromosome_lengths_z10.txt"
 
 # Expression data
-expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
 
 # MAIN SCRIPT: #
 
@@ -261,4 +261,4 @@ sig_region_df = DataFrame("Mark" => ["K27ac",
                           "End" => [k27_df.Pos[end], k4_df.Pos[end], k9_df.Pos[end], atac_df.Pos[end]],
                           "MeanCor" => [k27_mean_cor, k4_mean_cor, k9_mean_cor, atac_mean_cor])
 
-CSV.write("./data/sig_regions.csv", sig_region_df)
+CSV.write("../../dicty_data/sig_regions.csv", sig_region_df)

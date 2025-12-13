@@ -5,7 +5,7 @@ using Intervals
 
 cd("blacklists")
 
-ensembl_cds = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
+ensembl_cds = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
 
 const ax4_dup_interval_1 = Interval(2263132, 3015703)
 const ax4_dup_interval_2 = Interval(3016083, 3768654)

@@ -6,11 +6,11 @@ include("custom_lib/load_gff.jl")
 include("custom_lib/te_utils.jl")
 
 # Files:
-repeat_file = "../../../../data/AX4/genome_ver_2_7/dicty_repeats-families.stk"
-repeat_file_contigs = "../../../../data/AX4/genome_ver_2_7/repeat_modeler_output/RM_2530911.TueFeb132059322024/families-classified.stk"
-gff_source = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-ensembl_cds_id_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
+repeat_file = "../../dicty_data/AX4/genome_ver_2_7/dicty_repeats-families.stk"
+repeat_file_contigs = "../../dicty_data/AX4/genome_ver_2_7/repeat_modeler_output/RM_2530911.TueFeb132059322024/families-classified.stk"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
 te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
 

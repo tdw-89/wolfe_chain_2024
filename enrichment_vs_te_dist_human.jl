@@ -14,18 +14,18 @@ reload_peak_data = false
 te_type = "TE"
 
 # Peak files
-# chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-chip_peak_file_dir = "../../../../data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
+# chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+chip_peak_file_dir = "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
 
 # Genome data
-gff_source = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-paralog_file = "./data/filtered/human_paralog_info_filt.csv"
-te_dist_file = "./data/te_distance_human_$te_type.csv"
+gff_source = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+paralog_file = "../../dicty_data/filtered/human_paralog_info_filt.csv"
+te_dist_file = "../../dicty_data/te_distance_human_$te_type.csv"
 
 # Dosage sensitivity data:
-significant_overlap_file = "./data/lift_over_data_filtered.csv"
-mismatch_file = "./data/lift_over_data_mismatches.csv"
+significant_overlap_file = "../../dicty_data/lift_over_data_filtered.csv"
+mismatch_file = "../../dicty_data/lift_over_data_mismatches.csv"
 
 # Load the genome data:
 ref_genome = loadgenome(gff_source, chrom_lengths_file)
@@ -46,9 +46,9 @@ if reload_peak_data
     peak_files = filter(fn -> endswith(fn, ".bed") || endswith(fn, ".bed.gz"), peak_files)
     peak_files = filter(fn -> contains(fn, "k9me3"), peak_files)
     peak_data = binpeaks(peak_files, chrom_lengths_file)
-    serialize("./data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
+    serialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
 else
-    peak_data = deserialize("./data/julia_serialized/human_h3k9me3_exper.jls")
+    peak_data = deserialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls")
 end
 
 addtogenes!(ref_genome, peak_data)

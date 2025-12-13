@@ -40,12 +40,12 @@ function align_seqs(seq1, seq2, score_model)
 end
 
 # Genome data:
-gene_info_file = "../../../../../data/AX4/gene_information.txt"
-ensembl_cds = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
-ensembl_ncrna = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.ncrna.fa"
-dictybase_cds = "../../../../../data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
-dictybase_nc_file = "../../../../../data/AX4/genome_ver_2_7/fastas/dicty_noncoding.fa"
-chrom_names_file = "../../../../../data/AX4/genome_ver_2_7/chromosome_names.csv"
+gene_info_file = "../../dicty_data/AX4/gene_information.txt"
+ensembl_cds = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
+ensembl_ncrna = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.ncrna.fa"
+dictybase_cds = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
+dictybase_nc_file = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_noncoding.fa"
+chrom_names_file = "../../dicty_data/AX4/genome_ver_2_7/chromosome_names.csv"
 
 # Load the gene info data
 gene_info = CSV.read(gene_info_file, DataFrame)

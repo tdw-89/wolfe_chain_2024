@@ -20,21 +20,21 @@ function serialize_to_json(file_path, vecs)
 end
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
-sig_region_file = "./data/sig_regions.csv"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
+sig_region_file = "../../dicty_data/sig_regions.csv"
 
 # Genome data
-gff_source = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-paralog_file = "./data/filtered/paralog_filt.tsv"
-ensembl_cds_id_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
-blacklist_file = "./data/blacklist_with_tes.csv"
-final_gene_list = "./data/filtered/final_gene_list.txt"
-singleton_file = "./data/filtered/singleton_filt.tsv"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
+ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
+blacklist_file = "../../dicty_data/blacklist_with_tes.csv"
+final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
+singleton_file = "../../dicty_data/filtered/singleton_filt.tsv"
 
 # Save directory
-ser_data_dir = "./data/julia_serialized/"
+ser_data_dir = "../../dicty_data/julia_serialized/"
 
 # MAIN SCRIPT: #
 

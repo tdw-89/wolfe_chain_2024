@@ -12,8 +12,8 @@ x3_vals = [collect(100:100:400)...]
 line_color = "lightgray"
 line_type = "10px,30px"
 
-ser_data_dir = "./data/julia_serialized/"
-plot_save_dir = "./data/saved_figures/"
+ser_data_dir = "../../dicty_data/julia_serialized/"
+plot_save_dir = "../../dicty_data/saved_figures/"
 
 # Expression enrichment plots:
 tss_expr_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_expr.jls"))

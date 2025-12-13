@@ -105,23 +105,23 @@ box_layout_diff = Layout(titlefont=attr(family=font_family, size=40),
                     showlegend=false)
 
 # Genome data
-gff_data = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Expression data
-expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
-expr_data_adj = "./data/filtered/expr_data_filt_adj.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
+expr_data_adj = "../../dicty_data/filtered/expr_data_filt_adj.tsv"
 
 # Peak files
-chip_peak_file_dir = "../../../../data/wang_et_al/processed/run_1_ensembl52/"
-atac_peak_file_dir = "../../../../data/wang_et_al/processed/run_2_ensembl52/"
+chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
+atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 
 # Paralog data
-paralog_file = "./data/filtered/paralog_filt.tsv"
+paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 
 # Singleton list
-singleton_list_file = "./data/filtered/singleton_filt.tsv"
-# final_gene_list = "./data/filtered/final_gene_list.txt"
+singleton_list_file = "../../dicty_data/filtered/singleton_filt.tsv"
+# final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
 
 # # Load final filtered gene list
 # final_gene_list = open(final_gene_list) do file
@@ -195,7 +195,7 @@ singletons =  get(ref_genome, Vector(singleton_list.GeneID))
 singleton_expr_vals = [gene.rnas[1].expression[1] for gene in singletons if !ismissing(gene) && !isempty(gene.rnas)]
 expression_deciles = [paralog_data.AvgExpr[quantile_vals .== q] for q in sort(unique(quantile_vals))]
 
-open("./data/julia_serialized/expression_deciles.json", "w") do file
+open("../../dicty_data/julia_serialized/expression_deciles.json", "w") do file
     JSON.print(file, Dict([["$i" => decile for (i,decile) in enumerate(expression_deciles)]...; "singleton" => singleton_expr_vals]))
 end
 

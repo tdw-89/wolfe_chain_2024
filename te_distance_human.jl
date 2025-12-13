@@ -15,12 +15,12 @@ only_numbered_chroms = true
 specific_type = "TE"
 
 # Files
-human_gff = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
-chrom_lengths_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
-repeat_file = "../../../../data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
-repeat_has_h3k9me3_file = "./data/te_has_h3k9me3.csv"
-ensembl_cds_file = "../../../../data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
-peak_data_dir = "../../../../data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
+human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
+chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
+repeat_file = "../../dicty_data/mammals/primates/h_sapiens/GRCh38_UCSC_rmsk.tsv.gz" # UCSC-derived table of repeatmasker-identified repeats
+repeat_has_h3k9me3_file = "../../dicty_data/te_has_h3k9me3.csv"
+ensembl_cds_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.cds.all.fa.gz"
+peak_data_dir = "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods/"
 
 # Load the reference
 human_ref = loadgenome(human_gff, chrom_lengths_file)
@@ -153,8 +153,8 @@ te_dist_df.Distance = map(dist -> dist == Inf ? missing : Int(dist), te_dist_df.
 te_dist_df.TE_start = map(start -> start == Inf ? missing : Int(start), te_dist_df.TE_start)
 te_dist_df.TE_end = map(end_ -> end_ == Inf ? missing : Int(end_), te_dist_df.TE_end)
 file_suffix = only_specific_type ? "_$specific_type" : ""
-CSV.write("./data/te_distance_human$(file_suffix)$(only_h3k9me3 ? "_has_h3k9me3" : "").csv", te_dist_df)
-CSV.write("./data/te_distance_human_numbered_chroms2$(file_suffix)$(only_h3k9me3 ? "_has_h3k9me3" : "").csv", filter(row -> row.Scaffold in [["$i" for i in 1:22]; "X"; "Y"], te_dist_df))
-open("./data/cds_ids_num_chroms.txt", "w") do io
+CSV.write("../../dicty_data/te_distance_human$(file_suffix)$(only_h3k9me3 ? "_has_h3k9me3" : "").csv", te_dist_df)
+CSV.write("../../dicty_data/te_distance_human_numbered_chroms2$(file_suffix)$(only_h3k9me3 ? "_has_h3k9me3" : "").csv", filter(row -> row.Scaffold in [["$i" for i in 1:22]; "X"; "Y"], te_dist_df))
+open("../../dicty_data/cds_ids_num_chroms.txt", "w") do io
     println(io, join(te_dist_df.GeneID, "\n"))
 end

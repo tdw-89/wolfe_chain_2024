@@ -8,9 +8,9 @@ make_df <- function(quantile_labels, means_vec){
   return(df)
 }
 
-means_vecs_expr_file <- "./data/julia_serialized/means_vecs_expr.json"
-means_vecs_ds_file <- "./data/julia_serialized/means_vecs_ds.json"
-means_vecs_ds_human_file <- "./data/julia_serialized/means_vecs_ds_human.json"
+means_vecs_expr_file <- "../../dicty_data/julia_serialized/means_vecs_expr.json"
+means_vecs_ds_file <- "../../dicty_data/julia_serialized/means_vecs_ds.json"
+means_vecs_ds_human_file <- "../../dicty_data/julia_serialized/means_vecs_ds_human.json"
 
 means_vecs_expr <- fromJSON(means_vecs_expr_file)
 means_vecs_ds <- fromJSON(means_vecs_ds_file)

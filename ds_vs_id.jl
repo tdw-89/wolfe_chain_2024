@@ -21,12 +21,12 @@ function cor_range(ds_vals, id_vals, ds_threshold, cor_func::F=cor) where F <: F
 end
 
 # Paralog file
-full_paralog_file = "../../../../data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
-filt_paralog_file = "./data/"
+full_paralog_file = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
+filt_paralog_file = "../../dicty_data/"
 
 # Load paralog data
 paralog_data = CSV.read(full_paralog_file, DataFrame, delim='\t')
-ds_estimates = CSV.read("./data/filtered/dS_df.csv", DataFrame)
+ds_estimates = CSV.read("../../dicty_data/filtered/dS_df.csv", DataFrame)
 
 select!(paralog_data, [1, 15, 4, 5, 6, 7])
 rename!(paralog_data, ["GeneID", "ParalogID", "dS","IDqt","IDtq","Type"])

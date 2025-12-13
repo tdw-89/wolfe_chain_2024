@@ -20,9 +20,9 @@ end
 # include("./custom_lib/misc_utils.jl")
 
 # Genomic data
-dictybase_cds = "../../../../../data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
-ensembl_cds = "../../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
-ensembl_paralogs_filt = "../data/filtered/paralog_filt.tsv"
+dictybase_cds = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
+ensembl_cds = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
+ensembl_paralogs_filt = ".../../dicty_data/filtered/paralog_filt.tsv"
 
 # CDS Readers:
 db_reader = FastaReader(dictybase_cds)

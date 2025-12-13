@@ -7,11 +7,11 @@ using HypothesisTests
 include("custom_lib/load_gff.jl")
 include("custom_lib/te_utils.jl")
 
-plot_save_dir = "./data/saved_figures/"
+plot_save_dir = "../../dicty_data/saved_figures/"
 
 # Paralog data
-paralog_file = "./data/filtered/paralog_filt.tsv"
-singleton_file = "./data/filtered/singleton_filt.tsv"
+paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
+singleton_file = "../../dicty_data/filtered/singleton_filt.tsv"
 
 # TE files
 te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
@@ -20,11 +20,11 @@ te_ids = open(te_id_file) do file
 end
 
 # Expression data
-expr_data_file = "./data/filtered/expr_data_filt_kallisto_ensembl52_single_with_TEs.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single_with_TEs.tsv"
 
 # Genome data
-gff_source = "../../../../data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
-chrom_lengths_file = "../../../../data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
+chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Load genome data
 ref_genome = loadgenome(gff_source, chrom_lengths_file)
