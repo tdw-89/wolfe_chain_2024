@@ -90,7 +90,6 @@ addexpression!(ref_genome, expr_data)
 addtogenes!(ref_genome, peak_data)
 
 # Create a dataframe for all paralog data
-paralog_data = paralog_data[levelcode.(cut(paralog_data.dS, 10)) .> 1,:]
 full_df = copy(paralog_data)
 
 # Get the average expression for each gene
@@ -238,5 +237,10 @@ mlr_model = lm(
         AvgExpr
     ), 
     full_df)
+mlr_table = DataFrame(coeftable(mlr_model))
+rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
+r_squared = adjr²(mlr_model)
+mlr_table.pvalue_adj = adjust(mlr_table[!, :pvalue], BenjaminiHochberg())
 
-mlr_model
+sort!(mlr_table, :pvalue_adj)
+CSV.write(joinpath(data_dir, "mlr_results.tsv"), mlr_table)
