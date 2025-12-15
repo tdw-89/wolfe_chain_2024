@@ -173,10 +173,7 @@ end
 
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
-# chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_16/"
-# h3_peak_dir = "../../dicty_data/wang_et_al/processed/run_9/peak_files_H3"
 atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
-# peak_dir = "../../dicty_data/zebrafish/data_from_freddy/"
 
 # Genome data
 # ensembl 52 genome data
@@ -185,10 +182,6 @@ chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 blacklist_file = "../../dicty_data/blacklist_with_tes.csv"
 te_dist_file = "../../dicty_data/te_distance.csv"
-
-# zebrafish genome data
-# gff_file = "../../dicty_data/zebrafish/Danio_rerio.GRCz10.91.gff3"
-# chrom_lengths_file = "../../dicty_data/zebrafish/chromosome_lengths_z10.txt"
 
 # Expression data
 expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"

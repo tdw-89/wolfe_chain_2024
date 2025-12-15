@@ -714,6 +714,16 @@ function has_expr(gene::Gene)
     return true
 end
 
+function getexpression(gene::Gene)
+    if has_expr(gene)
+
+        return gene.rnas[1].expression
+    else
+
+        nothing
+    end
+end
+
 function sample_to_bed_df(sample::SampleData)
     chroms = String[]
     starts = Int[]

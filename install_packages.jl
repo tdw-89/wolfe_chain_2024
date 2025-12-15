@@ -31,4 +31,13 @@ if !isempty(to_install)
     
 end
 
+try
+    temp_expr = quote
+        using YeoJohnsonTrans
+    end
+    eval(temp_expr)
+catch e
+    Pkg.add("https://github.com/tk3369/YeoJohnsonTrans.jl")
+end
+
 println("All packages installed")
