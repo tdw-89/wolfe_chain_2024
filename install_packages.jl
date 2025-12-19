@@ -7,7 +7,7 @@ full_list = [
     "TranscodingStreams", "DataStructures", "Graphs", "MetaGraphs", "EzXML",
     "RollingFunctions", "DSP", "HypothesisTests", "MultipleTesting", "FASTX",
     "GFF3", "FreqTables", "Loess", "CodecZlib", "BGZFStreams",
-    "FixedPointNumbers", "GLM", "Automa"
+    "FixedPointNumbers", "GLM", "Automa", "JSON", "Distributions", "StatsModels"
 ]
 
 to_install = String[]

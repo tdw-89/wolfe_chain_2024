@@ -60,7 +60,7 @@ ref_genome.genes[2][1]
 # Load paralog data
 paralog_data = CSV.read(paralog_file, DataFrame)
 filter!(row -> row["dS"] <= 3, paralog_data)
-CSV.write("data/filtered/paralog_ds_filt.csv", paralog_data)
+CSV.write("../../dicty_data/filtered/paralog_ds_filt.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # paralog_data[findall(map(id -> !siginrange(get(ref_genome, id),  GeneRange(TSS(), TES(), -500, 500)), paralog_data.ParalogID)),:]
@@ -81,11 +81,12 @@ sample_inds_vec = [k27ac_inds,
                    k4me3_inds, 
                    k9me3_inds, 
                    atac_inds]
-# get the global mean enrichment for each sample in singleton genes
+# get the global mean enrichment for each sample across all filtered genes
 global_means_vec = 
 [mean([mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
 
-tss_enrich = plot_enrich_region(paralog_data, 
+tss_enrich = plot_enrich_region(
+    paralog_data, 
     filtered_paralog_list, 
     sample_inds_vec, 
     [GeneRange(TSS(), TSS(), -500, 0) for i in 1:4], 
@@ -93,7 +94,8 @@ tss_enrich = plot_enrich_region(paralog_data,
     global_means=global_means_vec,
     z_min=0,
     z_max=4,
-    return_figs=true)
+    return_figs=true
+    )
 
 serialize(joinpath(ser_data_dir, "tss_enrich_plots_dS.jls"), tss_enrich)
 

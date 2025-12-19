@@ -11,7 +11,18 @@ using StatsBase
 using YeoJohnsonTrans
 
 data_dir = "../../dicty_data/"
-id_method = "dS" # "dS", "dN", or "id"
+life_cycle = "All" # "F" "M" "V" or "All"
+sigregions_only = false
+
+k27ac_upstream, k4me3_upstream, k9me3_upstream, atac_upstream = -500, -500, -500, -500
+k27ac_downstream, k4me3_downstream, k9me3_downstream, atac_downstream = 500, 500, 500, 500
+if sigregions_only
+    k27ac_upstream, k27ac_downstream = -140, 148
+    k4me3_upstream, k4me3_downstream = -200, 164
+    k9me3_upstream, k9me3_downstream = -500, 500
+    atac_upstream, atac_downstream = -500, 219
+end
+
 id_threshold = 3
 
 # Custom lib src:
@@ -33,13 +44,13 @@ final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
 
 # Expression data
 expr_data_file = joinpath(data_dir, "filtered/expr_data_filt_kallisto_ensembl52_single.tsv")
+
 # Peak files
 chip_peak_file_dir = joinpath(data_dir, "wang_et_al/processed/run_1_ensembl52/")
 atac_peak_file_dir = joinpath(data_dir, "wang_et_al/processed/run_2_ensembl52/")
 
 # Paralog data
 paralog_file = joinpath(data_dir, "filtered/paralog_filt.tsv")
-
 
 # Load final filtered gene list
 final_gene_list = open(final_gene_list) do file
@@ -58,6 +69,9 @@ rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 select!(expr_data, ["GeneID", "F", "M", "V"])
 
 # Average gene expression counts across all life-cycle stages
+if life_cycle != "All"
+    select!(expr_data, ["GeneID", life_cycle])
+end
 insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
 
@@ -69,6 +83,9 @@ filter!(row -> row.GeneID in final_gene_list, expr_data)
 
 # Load peak data
 peak_files = [filter(fn -> !contains(fn, r"_S[AB]_"), readdir(chip_peak_file_dir, join=true)); readdir(atac_peak_file_dir, join=true)]
+if life_cycle != "All"
+    peak_files = filter(fn -> contains(fn, Regex("_$life_cycle[AB]?_")), peak_files)
+end
 filter!(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_data = binpeaks(peak_files, chrom_lengths_file)
 
@@ -105,28 +122,40 @@ insertcols!(full_df, :H3K27ac => zeros(nrow(full_df)))
 insertcols!(full_df, :H3K4me3 => zeros(nrow(full_df)))
 insertcols!(full_df, :H3K9me3 => zeros(nrow(full_df)))
 insertcols!(full_df, :ATAC => zeros(nrow(full_df)))
+
+# indexes for each mark in each tissue
+idxs_h3k27ac = [1, 4, 7]
+idxs_h3k4me3 = [2, 5, 8]
+idxs_h3k9me3 = [3, 6, 9]
+idxs_atac = [10, 11, 12]
+if life_cycle != "All"
+    idxs_h3k27ac = [1]
+    idxs_h3k4me3 = [2]
+    idxs_h3k9me3 = [3]
+    idxs_atac = [4]
+end
 for i in 1:nrow(full_df)
     gid = full_df.GeneID[i]
     pid = full_df.ParalogID[i]
     
         # H3K27ac
-    gid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [1, 4, 7]])
-    pid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [1, 4, 7]])
+    gid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k27ac_upstream, k27ac_downstream), ind)) for ind in idxs_h3k27ac])
+    pid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k27ac_upstream, k27ac_downstream), ind)) for ind in idxs_h3k27ac])
     full_df[i, :H3K27ac] = mean([gid_sig_h3k27ac, pid_sig_h3k27ac])
 
         # H3K4me3
-    gid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [2, 5, 8]])
-    pid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [2, 5, 8]])
+    gid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k4me3_upstream, k4me3_downstream), ind)) for ind in idxs_h3k4me3])
+    pid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k4me3_upstream, k4me3_downstream), ind)) for ind in idxs_h3k4me3])
     full_df[i, :H3K4me3] = mean([gid_sig_h3k4me3, pid_sig_h3k4me3])
 
         # H3K9me3
-    gid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [3, 6, 9]])
-    pid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [3, 6, 9]])
+    gid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k9me3_upstream, k9me3_downstream), ind)) for ind in idxs_h3k9me3])
+    pid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k9me3_upstream, k9me3_downstream), ind)) for ind in idxs_h3k9me3])
     full_df[i, :H3K9me3] = mean([gid_sig_h3k9me3, pid_sig_h3k9me3])
 
         # ATAC
-    gid_sig_atac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [10, 11, 12]])
-    pid_sig_atac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), 0, 0), ind)) for ind in [10, 11, 12]])
+    gid_sig_atac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), atac_upstream, atac_downstream), ind)) for ind in idxs_atac])
+    pid_sig_atac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), atac_upstream, atac_downstream), ind)) for ind in idxs_atac])
     full_df[i, :ATAC] = mean([gid_sig_atac, pid_sig_atac])
 end
 
@@ -148,12 +177,12 @@ full_df.ATAC = normalize(full_df.ATAC)
 full_df.dS = normalize(full_df.dS)
 
 #--------------- PCA ---------------#
-input_data = Matrix(full_df[:,3:end-1])'
+input_data = Matrix(full_df[:,4:end])'
 pca_model = fit(PCA, input_data, maxoutdim=2)
 pca_data = MultivariateStats.predict(pca_model, input_data)
 
 # Use the loadings from the PCA to draw a biplot
-loadings_matrix = MultivariateStats.loadings(pca_model)  # Variables x PCs
+loadings_matrix = MultivariateStats.loadings(pca_model) # Variables x PCs
 variable_names = ["AvgExpr", "H3K27ac", "H3K4me3", "H3K9me3", "ATAC"]
 
 # Scale factor to make loadings visible relative to data spread
@@ -166,7 +195,13 @@ biplot_traces = GenericTrace[]
 push!(biplot_traces, scatter(
     x=pca_data[1, :], y=pca_data[2, :],
     mode="markers",
-    marker=attr(color=full_df.dS, opacity=0.5, size=5, colorscale="Viridis", colorbar=attr(title="dS")),
+    marker=attr(
+        color=full_df.dS, 
+        opacity=0.5, 
+        size=5, 
+        colorscale="Bluered", 
+        colorbar=attr(title="dS")
+        ),
     name="Data points",
     showlegend=false
 ))
@@ -192,7 +227,7 @@ end
 
 # Create biplot layout
 biplot_layout = Layout(
-    title="PCA Biplot",
+    title="PCA Biplot $life_cycle",
     xaxis_title="PC1",
     yaxis_title="PC2",
     showlegend=true,
@@ -204,43 +239,49 @@ biplot_layout = Layout(
 
 biplot_fig = plot(biplot_traces, biplot_layout)
 display(biplot_fig)
-savefig(biplot_fig, joinpath(data_dir, "pca_biplot.html"))
+savefig(biplot_fig, joinpath(data_dir, "pca_biplot_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").html"))
 
 #--------------- MLR ---------------#
 # For the ChIP/ATAC peaks, create binary variables indicating presence/absence of a peak
 # and normalize the enrichment values for only those genes that have peaks
-full_df = copy(full_df_backup)
-insertcols!(full_df, :HasH3K27ac => full_df.H3K27ac .> 0)
-insertcols!(full_df, :HasH3K4me3 => full_df.H3K4me3 .> 0)
-insertcols!(full_df, :HasH3K9me3 => full_df.H3K9me3 .> 0)
-insertcols!(full_df, :HasATAC => full_df.ATAC .> 0)
-full_df.H3K27ac[full_df.H3K27ac .> 0] = normalize(full_df.H3K27ac[full_df.H3K27ac .> 0])
-full_df.H3K4me3[full_df.H3K4me3 .> 0] = normalize(full_df.H3K4me3[full_df.H3K4me3 .> 0])
-full_df.H3K9me3[full_df.H3K9me3 .> 0] = normalize(full_df.H3K9me3[full_df.H3K9me3 .> 0])
-full_df.ATAC[full_df.ATAC .> 0] = normalize(full_df.ATAC[full_df.ATAC .> 0])
-full_df.AvgExpr = normalize(full_df.AvgExpr)
-full_df.dS = normalize(full_df.dS)
+full_df_mlr = copy(full_df_backup)
+insertcols!(full_df_mlr, :HasH3K27ac => full_df_mlr.H3K27ac .> 0)
+insertcols!(full_df_mlr, :HasH3K4me3 => full_df_mlr.H3K4me3 .> 0)
+insertcols!(full_df_mlr, :HasH3K9me3 => full_df_mlr.H3K9me3 .> 0)
+insertcols!(full_df_mlr, :HasATAC => full_df_mlr.ATAC .> 0)
+full_df_mlr.H3K27ac[full_df_mlr.H3K27ac .> 0] = normalize(full_df_mlr.H3K27ac[full_df_mlr.H3K27ac .> 0])
+full_df_mlr.H3K4me3[full_df_mlr.H3K4me3 .> 0] = normalize(full_df_mlr.H3K4me3[full_df_mlr.H3K4me3 .> 0])
+full_df_mlr.H3K9me3[full_df_mlr.H3K9me3 .> 0] = normalize(full_df_mlr.H3K9me3[full_df_mlr.H3K9me3 .> 0])
+full_df_mlr.ATAC[full_df_mlr.ATAC .> 0] = normalize(full_df_mlr.ATAC[full_df_mlr.ATAC .> 0])
+full_df_mlr.AvgExpr = normalize(full_df_mlr.AvgExpr)
+full_df_mlr.dS = normalize(full_df_mlr.dS)
 
 # calculate the VIFs by calculating the correlation matrix and taking the diagonal of its inverse
-mat = Matrix(full_df[:,3:end])
+mat = Matrix(full_df_mlr[:,3:end])
 cor_mat = cor(mat)
 inv_cor_mat = inv(cor_mat)
 vif_values = diag(inv_cor_mat)
 
 mlr_model = lm(
     @formula(
-        dS ~ 
-        HasH3K27ac + H3K27ac + 
-        HasH3K4me3 + H3K4me3 + 
-        HasH3K9me3 + H3K9me3 + 
-        HasATAC + ATAC + 
+        dS ~
+        HasH3K27ac + H3K27ac +
+        HasH3K4me3 + H3K4me3 +
+        HasH3K9me3 + H3K9me3 +
+        HasATAC + ATAC +
         AvgExpr
     ), 
-    full_df)
+    full_df_mlr)
 mlr_table = DataFrame(coeftable(mlr_model))
 rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
 r_squared = adjr²(mlr_model)
 mlr_table.pvalue_adj = adjust(mlr_table[!, :pvalue], BenjaminiHochberg())
 
 sort!(mlr_table, :pvalue_adj)
-CSV.write(joinpath(data_dir, "mlr_results.tsv"), mlr_table)
+CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").csv"), mlr_table)
+stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").txt"), "w")
+write(stats_file, "Adjusted R²: $r_squared\n\nVIF Values:\n")
+for (i, col_name) in enumerate(names(full_df_mlr)[3:end])
+    write(stats_file, "$col_name: $(vif_values[i])\n")
+end
+close(stats_file)
