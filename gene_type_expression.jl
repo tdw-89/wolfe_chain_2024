@@ -1,7 +1,4 @@
-using CSV
-using DataFrames
-using PlotlyJS
-using HypothesisTests
+include("prelude.jl")
 
 # custom lib:
 include("custom_lib/load_gff.jl")

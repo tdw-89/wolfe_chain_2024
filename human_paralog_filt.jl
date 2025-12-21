@@ -1,5 +1,4 @@
-using CSV
-using DataFrames
+include("prelude.jl")
 
 include("custom_lib/load_gff.jl")
 include("custom_lib/paralog_utils.jl")

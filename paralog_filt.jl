@@ -1,6 +1,4 @@
-using CSV
-using DataFrames
-using StatsBase
+include("prelude.jl")
 
 # Custom lib src:
 include("./custom_lib/paralog_utils.jl")

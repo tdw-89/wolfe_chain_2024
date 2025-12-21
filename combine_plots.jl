@@ -1,5 +1,6 @@
+include("prelude.jl")
+
 using Serialization
-using PlotlyJS
 
 save_plots = true
 box_plots = true

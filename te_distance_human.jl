@@ -1,5 +1,5 @@
-using CSV
-using DataFrames
+include("prelude.jl")
+
 using FastaIO
 using Serialization
 

@@ -1,9 +1,6 @@
+include("prelude.jl")
+
 using GLM
-using CSV
-using DataFrames
-using HypothesisTests
-using MultipleTesting
-using PlotlyJS
 
 # Custom lib src:
 include("./custom_lib/load_gff.jl")

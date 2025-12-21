@@ -1,18 +1,9 @@
-using Pkg
-Pkg.activate("BioinfoTools/")
-using BioinfoTools.LoadGFF
-using BioinfoTools.EnrichmentUtils
-using BioinfoTools.GenomicData
-using BioinfoTools.GenomeTypes
+include("prelude.jl")
+
 import BioinfoTools.MiscUtils: normalize_yj
 
 using CategoricalArrays
-using CSV
-using DataFrames
 using GLM
-using MultipleTesting
-using PlotlyJS
-using StatsBase
 using Serialization
 
 data_dir = "../../dicty_data/"

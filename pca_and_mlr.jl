@@ -1,22 +1,13 @@
-using Pkg
-Pkg.activate("BioinfoTools/")
-using BioinfoTools.LoadGFF
-using BioinfoTools.EnrichmentUtils
-using BioinfoTools.GenomicData
-using BioinfoTools.GenomeTypes
-import BioinfoTools.MiscUtils: normalize_yj
+include("prelude.jl")
+
+using EnrichmentUtils
+import MiscUtils: normalize_yj
 
 using CategoricalArrays
-using CSV
-using DataFrames
 using GLM
 using LinearAlgebra
 using MultivariateStats
-using MultipleTesting
 using NaturalSort
-using PlotlyJS
-using StatsBase
-using YeoJohnsonTrans
 
 data_dir = "../../dicty_data/"
 life_cycle = "All" # "F" "M" "V" or "All"

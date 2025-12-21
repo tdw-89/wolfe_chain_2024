@@ -1,5 +1,5 @@
-using CSV
-using DataFrames
+include("prelude.jl")
+
 using Serialization
 
 include("custom_lib/genomic_data.jl")

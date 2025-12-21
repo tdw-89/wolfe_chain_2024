@@ -1,11 +1,7 @@
-using HypothesisTests
-using MultipleTesting
-using CSV
-using DataFrames
+include("prelude.jl")
+
 using CategoricalArrays
-using PlotlyJS
 using NaturalSort
-using StatsBase
 using RollingFunctions
 using JSON
 

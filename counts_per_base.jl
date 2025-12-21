@@ -1,3 +1,5 @@
+include("prelude.jl")
+
 using Serialization
 
 # Custom lib src:

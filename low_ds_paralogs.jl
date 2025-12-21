@@ -1,8 +1,6 @@
-using HypothesisTests
-using CSV
-using DataFrames
+include("prelude.jl")
+
 using CategoricalArrays
-using PlotlyJS
 
 LOW_DS_QUANT_NUM_CUTOFF = 2
 

@@ -1,22 +1,7 @@
-using Pkg
-Pkg.activate("BioinfoTools/")
-using BioinfoTools.LoadGFF
-using BioinfoTools.EnrichmentUtils
-using BioinfoTools.GenomicData
-using BioinfoTools.GenomeTypes
+include("prelude.jl")
 
-using CSV
-using DataFrames
-using Statistics
 using Serialization
-using HypothesisTests
-using MultipleTesting
 using JSON
-
-# Custom lib src:
-# include("./custom_lib/load_gff.jl")
-# include("./custom_lib/genomic_data.jl")
-# include("./custom_lib/enrichment_utils.jl")
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)

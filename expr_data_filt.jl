@@ -1,6 +1,5 @@
 # Run first
-using CSV
-using DataFrames
+include("prelude.jl")
 
 # Filtering parameters
 filter_zeros = true

@@ -1,9 +1,8 @@
 # Run third
 
+include("prelude.jl")
+
 using Serialization
-using CSV
-using DataFrames
-using StatsBase
 using CategoricalArrays
 
 # Custom lib src:

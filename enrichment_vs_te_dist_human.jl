@@ -1,8 +1,5 @@
-using CSV
-using DataFrames
-using PlotlyJS
-using HypothesisTests
-using MultipleTesting
+include("prelude.jl")
+
 using Serialization
 
 # custom lib:

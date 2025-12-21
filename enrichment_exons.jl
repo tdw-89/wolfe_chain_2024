@@ -2,8 +2,8 @@
 # so there may be a way to speed it up by 2x. For each test of overlep Subject->Query, it also
 # tests Query->Subject. It doesn't change the time complexity, but it does double the number of
 # comparisons.
-using CSV
-using DataFrames
+include("prelude.jl")
+
 using Serialization
 using IntervalTrees
 using Graphs

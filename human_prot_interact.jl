@@ -1,5 +1,4 @@
-using CSV
-using DataFrames
+include("prelude.jl")
 
 re_load_interact_data = false
 

@@ -1,7 +1,5 @@
-using CSV
-using DataFrames
-using StatsBase
-using PlotlyJS
+include("prelude.jl")
+
 using RollingFunctions
 using DSP
 
