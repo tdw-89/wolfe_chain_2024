@@ -2,7 +2,7 @@
 
 julia_version = "1.12.3"
 manifest_format = "2.0"
-project_hash = "1174c9cf3ecb3a71754319447736eff467bd3eda"
+project_hash = "dac8bc499024924e773af7d5e562ff54355147a1"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "8b2b045b22740e4be20654175cc38291d48539db"
@@ -128,7 +128,9 @@ version = "1.1.0"
 
 [[deps.BED]]
 deps = ["Automa", "BGZFStreams", "BioGenerics", "ColorTypes", "FixedPointNumbers", "GenomicFeatures", "Indexes", "TranscodingStreams"]
-git-tree-sha1 = "ce82f2d2e985c3b5eff4d5098c7e9bde8928278b"
+git-tree-sha1 = "092461d3e1ac652a3f36806d2f928652e6ae2234"
+repo-rev = "develop"
+repo-url = "https://github.com/tdw-89/BED.jl.git"
 uuid = "8e4a8c10-cb6b-11e8-08d2-83478d609d67"
 version = "0.3.1"
 

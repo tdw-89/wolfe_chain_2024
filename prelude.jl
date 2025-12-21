@@ -1,8 +1,8 @@
 # Custom library
 using BioinfoTools
-using LoadGFF
-using GenomicData
-using GenomeTypes
+using .LoadGFF
+using .GenomicData
+using .GenomeTypes
 
 # Common packages
 using CSV

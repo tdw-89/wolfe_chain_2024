@@ -7,6 +7,9 @@ Pkg.add(url="https://github.com/tk3369/YeoJohnsonTrans.jl.git")
 # Need to add my version of GFF3 for compat with automa v1
 Pkg.add(url="https://github.com/tdw-89/GFF3.jl.git")
 
+# Need to add my version of BED for narrowPeak compat
+Pkg.add(url="https://github.com/tdw-89/BED.jl.git")
+
 # Custom library
 Pkg.add(url="https://github.com/tdw-89/BioinfoTools.git")
 

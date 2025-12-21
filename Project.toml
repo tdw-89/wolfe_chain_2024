@@ -1,4 +1,5 @@
 [deps]
+BED = "8e4a8c10-cb6b-11e8-08d2-83478d609d67"
 BioinfoTools = "00eaa582-b862-4e15-ad52-40bcea7257db"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GFF3 = "af1dc308-cb6b-11e8-32f0-31192efa90f6"

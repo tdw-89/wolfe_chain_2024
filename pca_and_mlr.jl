@@ -1,7 +1,7 @@
 include("prelude.jl")
 
-using EnrichmentUtils
-import MiscUtils: normalize_yj
+using .EnrichmentUtils
+import .MiscUtils: normalize_yj
 
 using CategoricalArrays
 using GLM
