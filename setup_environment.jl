@@ -1,6 +1,17 @@
 using Pkg
+Pkg.activate(".")
 
-full_list = [
+# Need to add first, as it's unregistered
+Pkg.add(url="https://github.com/tk3369/YeoJohnsonTrans.jl.git")
+
+# Need to add my version of GFF3 for compat with automa v1
+Pkg.add(url="https://github.com/tdw-89/GFF3.jl.git")
+
+# Custom library
+Pkg.add(url="https://github.com/tdw-89/BioinfoTools.git")
+
+# List of external dependencies
+external_deps = [
     "CSV", "DataFrames", "FastaIO", "Intervals", "IntervalTrees", "BioGenerics", "BioSequences", "BioAlignments",
     "Serialization", "StatsBase", "CategoricalArrays", "PlotlyJS", "Printf", "Pipe",
     "NaturalSort", "Interpolations", "XAM", "GenomicFeatures", "Indexes",
@@ -12,7 +23,7 @@ full_list = [
 
 to_install = String[]
 
-for pkg in full_list
+for pkg in external_deps
 
     try
         # Check if the package is already installed
@@ -29,15 +40,6 @@ end
 if !isempty(to_install)
     Pkg.add(to_install)
     
-end
-
-try
-    temp_expr = quote
-        using YeoJohnsonTrans
-    end
-    eval(temp_expr)
-catch e
-    Pkg.add("https://github.com/tk3369/YeoJohnsonTrans.jl")
 end
 
 println("All packages installed")

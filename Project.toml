@@ -1,0 +1,6 @@
+[deps]
+BioinfoTools = "00eaa582-b862-4e15-ad52-40bcea7257db"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+GFF3 = "af1dc308-cb6b-11e8-32f0-31192efa90f6"
+StatsModels = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+YeoJohnsonTrans = "bde5d4e9-ba51-5a47-b2d1-b5088a182367"

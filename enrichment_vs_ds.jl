@@ -1,3 +1,13 @@
+using Pkg
+Pkg.activate("BioinfoTools/")
+using BioinfoTools.LoadGFF
+using BioinfoTools.EnrichmentUtils
+using BioinfoTools.GenomicData
+using BioinfoTools.GenomeTypes
+
+using CSV
+using DataFrames
+using Statistics
 using Serialization
 using JSON
 using MultipleTesting
@@ -5,9 +15,9 @@ using HypothesisTests
 using Random
 
 # Custom lib src:
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/genomic_data.jl")
-include("./custom_lib/enrichment_utils.jl")
+# include("./custom_lib/load_gff.jl")
+# include("./custom_lib/genomic_data.jl")
+# include("./custom_lib/enrichment_utils.jl")
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -50,12 +60,8 @@ end
 peak_files = [readdir(chip_peak_file_dir, join=true); readdir(atac_peak_file_dir, join=true)]
 peak_files = filter(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_files = filter(fn -> !contains(fn, r"_S[AB]+_"), peak_files)
-# peak_files = [filter(fn -> contains(fn, "FA"), peak_files); filter(fn -> contains(fn, "MA"), peak_files); filter(fn -> contains(fn, "VA"), peak_files)]
 peak_data = binpeaks(peak_files, chrom_lengths_file)
 addtogenes!(ref_genome, peak_data)
-ref_genome.genes[2][1]
-# Load singleton data
-# singletons = CSV.read(singleton_file, DataFrame).GeneID
 
 # Load paralog data
 paralog_data = CSV.read(paralog_file, DataFrame)

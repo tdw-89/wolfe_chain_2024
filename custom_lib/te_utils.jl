@@ -280,20 +280,3 @@ function parsehits(hits_file::String, families_file::String; eval_cutoff::Float6
 
     return hits_df
 end
-
-
-# TESTING #
-# #=
-# hits_fn = "C:/Users/eccwo/Dropbox/UML/Grad_school/research/data/mammals/primates/h_sapiens/dfam/3.5/hg38.nrph.hits.gz"
-# families_fn = "C:/Users/eccwo/Dropbox/UML/Grad_school/research/data/mammals/primates/h_sapiens/dfam/3.5/Dfam_curatedonly.embl.gz"
-
-# hits_df = parsehits(hits_fn, families_fn)
-# CSV.write("C:/Users/eccwo/Dropbox/UML/Grad_school/research/data/mammals/primates/h_sapiens/dfam/3.5/hg38.nrph.hits.keywords.csv", hits_df)
-# =#
-# repeat_df = CSV.read("C:/Users/eccwo/Dropbox/UML/Grad_school/research/data/mammals/primates/h_sapiens/dfam/3.5/hg38.nrph.hits.keywords.csv", DataFrame)
-# filter!(row -> !contains(lowercase(row["KeyWords"]), "satellite"), repeat_df)
-# ltrs = filter(row -> contains(row["KeyWords"], "Longterminalrepeat"), repeat_df)
-# non_ltrs = filter(row -> !contains(row["KeyWords"], "Longterminalrepeat"), repeat_df)
-# lines = filter(row -> contains(row["KeyWords"], "LINE"), non_ltrs)
-# sines = filter(row -> contains(row["KeyWords"], "SINE"), non_ltrs)
-# others = filter(row -> !contains(row["KeyWords"], "LINE") && !contains(row["KeyWords"], "SINE"), non_ltrs)

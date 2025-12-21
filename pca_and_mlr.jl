@@ -1,3 +1,11 @@
+using Pkg
+Pkg.activate("BioinfoTools/")
+using BioinfoTools.LoadGFF
+using BioinfoTools.EnrichmentUtils
+using BioinfoTools.GenomicData
+using BioinfoTools.GenomeTypes
+import BioinfoTools.MiscUtils: normalize_yj
+
 using CategoricalArrays
 using CSV
 using DataFrames
@@ -24,18 +32,6 @@ if sigregions_only
 end
 
 id_threshold = 3
-
-# Custom lib src:
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/genomic_data.jl")
-include("./custom_lib/enrichment_utils.jl")
-include("./custom_lib/misc_utils.jl")
-
-# helper function
-function normalize(u::Vector{Float64})
-    v = YeoJohnsonTrans.transform(u)
-    return zscore(v)
-end
 
 # Genome data
 gff_data = joinpath(data_dir, "AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3")
@@ -76,7 +72,7 @@ insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
 
 # log-transform data with an added pseudocount of 0.5
-expr_data.Avg = normalize(expr_data.Avg)
+expr_data.Avg = normalize_yj(expr_data.Avg)
 
 # filter expression data to only include genes in the final gene list
 filter!(row -> row.GeneID in final_gene_list, expr_data)
@@ -159,31 +155,30 @@ for i in 1:nrow(full_df)
     full_df[i, :ATAC] = mean([gid_sig_atac, pid_sig_atac])
 end
 
-display(plot([box(y= full_df.AvgExpr[full_df.H3K9me3 .> 0], name="w/ H3K9me3 (n = $(sum(full_df.H3K9me3 .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K9me3 .<= 0], name="w/o H3K9me3 (n = $(sum(full_df.H3K9me3 .<= 0)))")], Layout(title="AvgExpr (w/ H3K9me3 vs w/o H3K9me3)")))
-display(plot([box(y= full_df.AvgExpr[full_df.H3K27ac .> 0], name="w/ H3K27ac (n = $(sum(full_df.H3K27ac .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K27ac .<= 0], name="w/o H3K27ac (n = $(sum(full_df.H3K27ac .<= 0)))")], Layout(title="AvgExpr (w/ H3K27ac vs w/o H3K27ac)")))
-display(plot([box(y= full_df.AvgExpr[full_df.H3K4me3 .> 0], name="w/ H3K4me3 (n = $(sum(full_df.H3K4me3 .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K4me3 .<= 0], name="w/o H3K4me3 (n = $(sum(full_df.H3K4me3 .<= 0)))")], Layout(title="AvgExpr (w/ H3K4me3 vs w/o H3K4me3)")))
-display(plot([box(y= full_df.AvgExpr[full_df.ATAC .> 0], name="w/ ATAC (n = $(sum(full_df.ATAC .> 0)))"), box(y= full_df.AvgExpr[full_df.ATAC .<= 0], name="w/o ATAC (n = $(sum(full_df.ATAC .<= 0)))")], Layout(title="AvgExpr (w/ ATAC vs w/o ATAC)")))
+# display(plot([box(y= full_df.AvgExpr[full_df.H3K9me3 .> 0], name="w/ H3K9me3 (n = $(sum(full_df.H3K9me3 .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K9me3 .<= 0], name="w/o H3K9me3 (n = $(sum(full_df.H3K9me3 .<= 0)))")], Layout(title="AvgExpr (w/ H3K9me3 vs w/o H3K9me3)")))
+# display(plot([box(y= full_df.AvgExpr[full_df.H3K27ac .> 0], name="w/ H3K27ac (n = $(sum(full_df.H3K27ac .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K27ac .<= 0], name="w/o H3K27ac (n = $(sum(full_df.H3K27ac .<= 0)))")], Layout(title="AvgExpr (w/ H3K27ac vs w/o H3K27ac)")))
+# display(plot([box(y= full_df.AvgExpr[full_df.H3K4me3 .> 0], name="w/ H3K4me3 (n = $(sum(full_df.H3K4me3 .> 0)))"), box(y= full_df.AvgExpr[full_df.H3K4me3 .<= 0], name="w/o H3K4me3 (n = $(sum(full_df.H3K4me3 .<= 0)))")], Layout(title="AvgExpr (w/ H3K4me3 vs w/o H3K4me3)")))
+# display(plot([box(y= full_df.AvgExpr[full_df.ATAC .> 0], name="w/ ATAC (n = $(sum(full_df.ATAC .> 0)))"), box(y= full_df.AvgExpr[full_df.ATAC .<= 0], name="w/o ATAC (n = $(sum(full_df.ATAC .<= 0)))")], Layout(title="AvgExpr (w/ ATAC vs w/o ATAC)")))
 
 # PCA ANALYSIS: #
 full_df_backup = copy(full_df)  # Backup before z-scoring
 
 # Z-score normalize the data
 full_df = copy(full_df_backup)
-full_df.AvgExpr = zscore(full_df.AvgExpr) # already log-transformed
-full_df.H3K27ac = normalize(full_df.H3K27ac)
-full_df.H3K4me3 = normalize(full_df.H3K4me3)
-full_df.H3K9me3 = normalize(full_df.H3K9me3)
-full_df.ATAC = normalize(full_df.ATAC)
-full_df.dS = normalize(full_df.dS)
+full_df.H3K27ac = normalize_yj(full_df.H3K27ac)
+full_df.H3K4me3 = normalize_yj(full_df.H3K4me3)
+full_df.H3K9me3 = normalize_yj(full_df.H3K9me3)
+full_df.ATAC = normalize_yj(full_df.ATAC)
+full_df.dS = normalize_yj(full_df.dS)
 
 #--------------- PCA ---------------#
-input_data = Matrix(full_df[:,4:end])'
+input_data = Matrix(full_df[:,3:end])'
 pca_model = fit(PCA, input_data, maxoutdim=2)
 pca_data = MultivariateStats.predict(pca_model, input_data)
 
 # Use the loadings from the PCA to draw a biplot
 loadings_matrix = MultivariateStats.loadings(pca_model) # Variables x PCs
-variable_names = ["AvgExpr", "H3K27ac", "H3K4me3", "H3K9me3", "ATAC"]
+variable_names = ["dS", "AvgExpr", "H3K27ac", "H3K4me3", "H3K9me3", "ATAC"]
 
 # Scale factor to make loadings visible relative to data spread
 scale_factor = 2.0
@@ -195,19 +190,13 @@ biplot_traces = GenericTrace[]
 push!(biplot_traces, scatter(
     x=pca_data[1, :], y=pca_data[2, :],
     mode="markers",
-    marker=attr(
-        color=full_df.dS, 
-        opacity=0.5, 
-        size=5, 
-        colorscale="Bluered", 
-        colorbar=attr(title="dS")
-        ),
+    marker=attr(size=6, color="rgba(0,0,0,0.5)"),
     name="Data points",
     showlegend=false
 ))
 
 # Colors for each loading vector
-colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
+colors = ["#8c564b", "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
 # Add loading vectors as lines with arrowhead markers
 for (i, var_name) in enumerate(variable_names)
@@ -245,42 +234,58 @@ savefig(biplot_fig, joinpath(data_dir, "pca_biplot_$(life_cycle)$(sigregions_onl
 # For the ChIP/ATAC peaks, create binary variables indicating presence/absence of a peak
 # and normalize the enrichment values for only those genes that have peaks
 full_df_mlr = copy(full_df_backup)
-insertcols!(full_df_mlr, :HasH3K27ac => full_df_mlr.H3K27ac .> 0)
-insertcols!(full_df_mlr, :HasH3K4me3 => full_df_mlr.H3K4me3 .> 0)
-insertcols!(full_df_mlr, :HasH3K9me3 => full_df_mlr.H3K9me3 .> 0)
-insertcols!(full_df_mlr, :HasATAC => full_df_mlr.ATAC .> 0)
-full_df_mlr.H3K27ac[full_df_mlr.H3K27ac .> 0] = normalize(full_df_mlr.H3K27ac[full_df_mlr.H3K27ac .> 0])
-full_df_mlr.H3K4me3[full_df_mlr.H3K4me3 .> 0] = normalize(full_df_mlr.H3K4me3[full_df_mlr.H3K4me3 .> 0])
-full_df_mlr.H3K9me3[full_df_mlr.H3K9me3 .> 0] = normalize(full_df_mlr.H3K9me3[full_df_mlr.H3K9me3 .> 0])
-full_df_mlr.ATAC[full_df_mlr.ATAC .> 0] = normalize(full_df_mlr.ATAC[full_df_mlr.ATAC .> 0])
-full_df_mlr.AvgExpr = normalize(full_df_mlr.AvgExpr)
-full_df_mlr.dS = normalize(full_df_mlr.dS)
+full_df_mlr.H3K27ac = normalize_yj(full_df_mlr.H3K27ac)
+full_df_mlr.H3K4me3 = normalize_yj(full_df_mlr.H3K4me3)
+full_df_mlr.H3K9me3 = normalize_yj(full_df_mlr.H3K9me3)
+full_df_mlr.ATAC = normalize_yj(full_df_mlr.ATAC)
+full_df_mlr.dS = normalize_yj(full_df_mlr.dS)
 
 # calculate the VIFs by calculating the correlation matrix and taking the diagonal of its inverse
 mat = Matrix(full_df_mlr[:,3:end])
 cor_mat = cor(mat)
+# Create a heatmap of the correlation matrix, with values annotated
+heatmap_trace = heatmap(
+    z=cor_mat,
+    x=names(full_df_mlr)[3:end],
+    y=names(full_df_mlr)[3:end],
+    colorscale="Viridis",
+    zmin=-1,
+    zmax=1,
+    colorbar=attr(title="Correlation")
+)
+
+heatmap_layout = Layout(
+    title="Correlation Matrix Heatmap $life_cycle",
+    xaxis=attr(tickangle=-45),
+    yaxis=attr(autorange="reversed")
+)
+
+heatmap_fig = plot(heatmap_trace, heatmap_layout)
+display(heatmap_fig)
+savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").html"))
+
 inv_cor_mat = inv(cor_mat)
 vif_values = diag(inv_cor_mat)
 
 mlr_model = lm(
     @formula(
         dS ~
-        HasH3K27ac + H3K27ac +
-        HasH3K4me3 + H3K4me3 +
-        HasH3K9me3 + H3K9me3 +
-        HasATAC + ATAC +
+        H3K27ac +
+        H3K4me3 +
+        H3K9me3 +
+        ATAC +
         AvgExpr
     ), 
     full_df_mlr)
 mlr_table = DataFrame(coeftable(mlr_model))
 rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
-r_squared = adjr²(mlr_model)
+r_squared = r²(mlr_model)
 mlr_table.pvalue_adj = adjust(mlr_table[!, :pvalue], BenjaminiHochberg())
 
 sort!(mlr_table, :pvalue_adj)
 CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").csv"), mlr_table)
 stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").txt"), "w")
-write(stats_file, "Adjusted R²: $r_squared\n\nVIF Values:\n")
+write(stats_file, "r²: $r_squared\n\nVIF Values:\n")
 for (i, col_name) in enumerate(names(full_df_mlr)[3:end])
     write(stats_file, "$col_name: $(vif_values[i])\n")
 end

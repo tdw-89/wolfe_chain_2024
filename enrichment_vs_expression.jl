@@ -1,11 +1,22 @@
+using Pkg
+Pkg.activate("BioinfoTools/")
+using BioinfoTools.LoadGFF
+using BioinfoTools.EnrichmentUtils
+using BioinfoTools.GenomicData
+using BioinfoTools.GenomeTypes
+
+using CSV
+using DataFrames
+using Statistics
 using Serialization
+using HypothesisTests
 using MultipleTesting
 using JSON
 
 # Custom lib src:
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/genomic_data.jl")
-include("./custom_lib/enrichment_utils.jl")
+# include("./custom_lib/load_gff.jl")
+# include("./custom_lib/genomic_data.jl")
+# include("./custom_lib/enrichment_utils.jl")
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -53,10 +64,10 @@ rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 # Remove 'S' stage expression data, and rearrange so that the samples are in the order they
 # will be for the peak data
 # select!(expr_data, ["GeneID", "F", "M", "V"])
-
 # Average gene expression counts across all life-cycle stages
 insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
+
 
 # log-transform data with an added pseudocount of 0.5
 expr_data.Avg = log.(expr_data.Avg .+ 0.5)
