@@ -1,4 +1,4 @@
-lslibrary(dunn.test)
+library(dunn.test)
 
 dunns_test <- function(means_vec) {
   means_vec |> dunn.test(method = "holm") -> d.test

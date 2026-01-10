@@ -1,8 +1,6 @@
 include("prelude.jl")
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/te_utils.jl")
+using .RepeatUtils
 
 plot_save_dir = "../../dicty_data/saved_figures/"
 

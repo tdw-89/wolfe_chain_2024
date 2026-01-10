@@ -1,7 +1,7 @@
 using CSV
 using DataFrames
 
-cd("blacklists")
+cd(@__DIR__)
 
 pseudogene_list = "ensembl_pseudogenes.tsv"
 te_list_file = "ensembl_te_ids_with_predicted.tsv"

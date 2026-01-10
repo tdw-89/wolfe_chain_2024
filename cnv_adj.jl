@@ -1,14 +1,7 @@
-# Run third
-
 include("prelude.jl")
 
 using Serialization
 using CategoricalArrays
-
-# Custom lib src:
-include("./custom_lib/genomic_data.jl")
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/misc_utils.jl")
 
 function avg_input_count(gene_id::S, ref_genome::RefGenome, input_counts::SampleData) where S <: AbstractString
     gene = get(ref_genome, gene_id)

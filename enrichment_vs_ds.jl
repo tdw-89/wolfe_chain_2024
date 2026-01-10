@@ -1,5 +1,7 @@
 include("prelude.jl")
 
+using .EnrichmentUtils
+
 using Serialization
 using JSON
 using Random
@@ -13,6 +15,8 @@ function serialize_to_json(file_path, vecs)
 
     end
 end
+
+gene_range = GeneRange(TSS(), TES(), -500, 500)
 
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
@@ -74,7 +78,7 @@ sample_inds_vec = [k27ac_inds,
                    atac_inds]
 # get the global mean enrichment for each sample across all filtered genes
 global_means_vec = 
-[mean([mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
+[mean([mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
 
 tss_enrich = plot_enrich_region(
     paralog_data, 
@@ -115,18 +119,20 @@ serialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"), tes_enrich)
 
 # Plot bar plots of coverage in significant regions
 sig_region_df = CSV.read(sig_region_file, DataFrame)
-bar_plots, kw_tests, means_vecs = plot_bar(paralog_data, filtered_paralog_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]), # K27ac
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]), # K4me3
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[3], sig_region_df.End[3]), # K9me3
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])], # ATAC
-                                                            global_means_vec, [0,4], true, true);
+bar_plots, kw_tests, means_vecs = 
+    plot_bar(
+        paralog_data, 
+        filtered_paralog_list, 
+        sample_inds_vec, 
+        [gene_range, gene_range, gene_range, gene_range], # ATAC
+            global_means_vec, [0,4], true, true);
 p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
-                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[3], sig_region_df.End[3]),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])],
+                            [gene_range,
+                             gene_range,
+                             gene_range,
+                             gene_range],
                              global_means_vec)]
-adj_p_vals_perm_cor = adjust([pair[1] for pair in p_vals_perm_cor], Bonferroni())
-adj_p_vals_kw = adjust(pvalue.(kw_tests), Bonferroni())
+adj_p_vals_perm_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
+adj_p_vals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_dS.jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_ds.json"), means_vecs)

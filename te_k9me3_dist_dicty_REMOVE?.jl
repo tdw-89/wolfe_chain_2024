@@ -2,9 +2,6 @@ include("prelude.jl")
 
 using Intervals
 
-# Custom lib src:
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/genomic_data.jl")
 
 # Functions:
 function contiguous_ones(signal::BitVector)
@@ -38,7 +35,7 @@ end
 
 # TE files
 te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
-pred_te_coord_file = "./blacklists/predicted_te_combined.csv"
+pred_te_coord_file = "../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
 
 # Genome data
 gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
@@ -60,7 +57,6 @@ peak_files = readdir(chip_peak_file_dir, join=true) |>
              filter(fn -> !contains(fn, r"_S[AB]+_"))
 peak_data = binpeaks(peak_files, chrom_lengths_file)
 peak_dfs = [reduce(vcat, [interval_df(chrom.signal, chrom.name) for chrom in samp.chroms]) for samp in peak_data.samples]
-
 
 # Get the known and predicted TE coordinates:
 pred_te_df = CSV.read(pred_te_coord_file, DataFrame)

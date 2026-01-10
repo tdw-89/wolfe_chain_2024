@@ -2,9 +2,6 @@ include("prelude.jl")
 
 using Serialization
 
-# Custom lib src:
-include("./custom_lib/genomic_data.jl")
-
 # Input bam directory
 bam_dir = "D:/wang_et_al_new/ChIPseq_trimmed_bams_sorted_nodups/"
 

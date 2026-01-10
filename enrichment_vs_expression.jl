@@ -1,7 +1,10 @@
 include("prelude.jl")
 
+using .EnrichmentUtils
+
 using Serialization
 using JSON
+using GLM
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -12,6 +15,8 @@ function serialize_to_json(file_path, vecs)
 
     end
 end
+
+universal_range = GeneRange(TSS(), TES(), -500, 500)
 
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
@@ -52,7 +57,6 @@ rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 # Average gene expression counts across all life-cycle stages
 insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
-
 
 # log-transform data with an added pseudocount of 0.5
 expr_data.Avg = log.(expr_data.Avg .+ 0.5)
@@ -112,20 +116,21 @@ tes_enrich = plot_enrich_expr_region(expr_data,
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
 
 sig_region_df = CSV.read(sig_region_file, DataFrame)
-bar_plots, kw_tests, means_vecs = plot_bar_expr(expr_data, filtered_gene_list, sample_inds_vec, [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]), # K27ac
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]), # K4me3
-                                                                            GeneRange(TSS(), TSS(), sig_region_df.Start[3], sig_region_df.End[3]), # K9me3
-                                                                            GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])], # ATAC
-                                                        global_means_vec, [0,4], true, true);
+bar_plots, kw_tests, means_vecs = plot_bar_expr(
+    expr_data, 
+    filtered_gene_list, 
+    sample_inds_vec, 
+    [universal_range, universal_range, universal_range, universal_range],
+    global_means_vec, 
+    [0,4], 
+    true, 
+    true
+    );
 p_vals_perm_cor = [get_cor_expr(expr_data,
-                                         gene_range,
-                                         sample_ind,
-                                         ref_genome) for (sample_ind, gene_range) in zip(sample_inds_vec,
-                            [GeneRange(TSS(), TES(), sig_region_df.Start[1], sig_region_df.End[1]),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[2], sig_region_df.End[2]),
-                             GeneRange(TSS(), TSS(), sig_region_df.Start[3], sig_region_df.End[3]),
-                             GeneRange(TSS(), TES(), sig_region_df.Start[4], sig_region_df.End[4])])]
-adj_pvals_kw = adjust(pvalue.(kw_tests), Bonferroni())
-adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], Bonferroni())
+                    universal_range,
+                    sample_ind,
+                    ref_genome) for sample_ind in sample_inds_vec]
+adj_pvals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
+adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr.json"), means_vecs)

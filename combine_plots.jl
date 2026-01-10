@@ -144,7 +144,7 @@ for i in eachindex(sample_names)
     ))
     
     if save_plots
-        savefig(fig, joinpath(plot_save_dir, "proposal_combined_plot_$(sample_names[i])_dS.html"))
+        savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS.html"))
     
     end
     display(fig)

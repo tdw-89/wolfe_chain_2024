@@ -1,3 +1,7 @@
+#=
+STEP 1: Map dictybase TE annotations to Ensembl 52 genome reference
+=#
+
 using CSV
 using DataFrames
 using FastaIO
@@ -20,9 +24,9 @@ end
 # include("./custom_lib/misc_utils.jl")
 
 # Genomic data
-dictybase_cds = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
-ensembl_cds = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
-ensembl_paralogs_filt = ".../../dicty_data/filtered/paralog_filt.tsv"
+dictybase_cds = "../../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
+ensembl_cds = "../../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"
+ensembl_paralogs_filt = "../../../dicty_data/filtered/paralog_filt.tsv"
 
 # CDS Readers:
 db_reader = FastaReader(dictybase_cds)
@@ -120,7 +124,7 @@ for row in eachrow(same_chrom_diff_coord)
     row."Overlap %" = overlap
 end
 
-# Are there any other coding genes that overlap with these dictybase (↑) TEs in the Ensembl reference (checked manually via Jbrowse)?
+# Are there any other coding genes that overlap with these dictybase (↑) TEs in the Ensembl reference (confirmed manually via Jbrowse)?
 # Yes:
 #   - DDB_G0271004 overlaps with the region spanned by the union of DDB_G0271006's coordinates in the both references
 #   - DDB_G0277517 overlaps with the region spanned by the union of DDB_G0277519's coordinates in the both references
@@ -158,22 +162,28 @@ for i in 1:nrow(ensembl_cds_df)
 end
 
 # Create a list of genes that overlap with missing or mis-mapped TEs from the dictybase reference:
-overlapping_genes = unique(vcat(overlapping_ids_ens, 
-                                [
-                                    "DDB_G0271004",
-                                    "DDB_G0277517",
-                                    "DDB_G0267368",
-                                ]))
+overlapping_genes = unique(
+    vcat(
+        overlapping_ids_ens, 
+        [
+            "DDB_G0271004",
+            "DDB_G0277517",
+            "DDB_G0267368",
+        ]
+        )
+    )
 
 # Create the full list of Ensembl TEs:
                            # Keep those that have the same positions on the same chromosome
-te_ids_ensembl_full = vcat(same_chrom_same_coord.GeneID, 
-                           # Keep those on non-numbered chromosomes with the same sequence (the one on a numbered chromosome in db didn't overlap any Ensembl gene or have the same sequence as the Ensembl gene that matched that ID) 
-                           filter(row -> row.Chrom ∉ ["$i" for i in 1:6] && row.Chrom_1 ∉ ["$i" for i in 1:6], same_seq_diff_chrom).GeneID,
-                           # Keep those on numbered chromosomes with different positions (they all overlap)
-                           same_chrom_diff_coord.GeneID,
-                           # Keep those on numbered chromosomes that overlap the 'same_chrom_diff_coord' TEs
-                           overlapping_genes)
+te_ids_ensembl_full = vcat(
+    same_chrom_same_coord.GeneID, 
+    # Keep those on non-numbered chromosomes with the same sequence (the one on a numbered chromosome in db didn't overlap any Ensembl gene or have the same sequence as the Ensembl gene that matched that ID) 
+    filter(row -> row.Chrom ∉ ["$i" for i in 1:6] && row.Chrom_1 ∉ ["$i" for i in 1:6], same_seq_diff_chrom).GeneID,
+    # Keep those on numbered chromosomes with different positions (they all overlap)
+    same_chrom_diff_coord.GeneID,
+    # Keep those on numbered chromosomes that overlap the 'same_chrom_diff_coord' TEs
+    overlapping_genes
+)
 
 CSV.write("ensembl_te_ids_full.tsv", DataFrame(GeneID=te_ids_ensembl_full))
 
@@ -186,7 +196,7 @@ paralog_data = CSV.read(ensembl_paralogs_filt, DataFrame)
 
 # Do any of the paralog IDs match any of the Ensembl TE IDs?
 paralog_ids = vcat(paralog_data.GeneID, paralog_data.ParalogID)
-intersect(te_ids_ensembl_full, paralog_ids)
+intersect(te_ids_ensembl_full, paralog_ids) # No
 
 #= 
 NOTES:

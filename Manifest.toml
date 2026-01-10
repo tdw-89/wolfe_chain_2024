@@ -169,8 +169,8 @@ uuid = "3c28c6f8-a34d-59c4-9654-267d177fcfa9"
 version = "5.2.0"
 
 [[deps.BioinfoTools]]
-deps = ["BED", "BioSequences", "CSV", "CategoricalArrays", "CodecZlib", "Combinatorics", "DataFrames", "EzXML", "GFF3", "GenomicFeatures", "Graphs", "HypothesisTests", "InteractiveUtils", "Interpolations", "MetaGraphs", "MultipleTesting", "NaturalSort", "Pipe", "PlotlyJS", "Printf", "Random", "Statistics", "StatsBase", "XAM", "YeoJohnsonTrans"]
-git-tree-sha1 = "082a24d7e66377751dfc90a8627c59c664438c07"
+deps = ["BED", "BioSequences", "CSV", "CategoricalArrays", "CodecZlib", "Combinatorics", "DataFrames", "EzXML", "GFF3", "GenomicFeatures", "Graphs", "HypothesisTests", "InteractiveUtils", "Interpolations", "Logging", "MetaGraphs", "MultipleTesting", "NaturalSort", "Pipe", "PlotlyJS", "Printf", "Random", "Statistics", "StatsBase", "XAM", "YeoJohnsonTrans"]
+git-tree-sha1 = "feac17365e0dcdfbce6c178d55b31a4dbe8562ab"
 repo-rev = "main"
 repo-url = "https://github.com/tdw-89/BioinfoTools.git"
 uuid = "00eaa582-b862-4e15-ad52-40bcea7257db"

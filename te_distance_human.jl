@@ -3,10 +3,10 @@ include("prelude.jl")
 using FastaIO
 using Serialization
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/te_utils.jl")
-include("custom_lib/misc_utils.jl")
+# # custom lib:
+# include("custom_lib/load_gff.jl")
+# include("custom_lib/te_utils.jl")
+# include("custom_lib/misc_utils.jl")
 
 only_h3k9me3 = false
 only_specific_type = true

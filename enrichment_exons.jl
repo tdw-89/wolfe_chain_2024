@@ -1,5 +1,5 @@
 # NOTE: The 'intersect' method from the 'IntervalTrees' package performs redundant comparisons, 
-# so there may be a way to speed it up by 2x. For each test of overlep Subject->Query, it also
+# so there may be a way to speed it up by 2x. For each test of overlap Subject->Query, it also
 # tests Query->Subject. It doesn't change the time complexity, but it does double the number of
 # comparisons.
 include("prelude.jl")
@@ -8,8 +8,6 @@ using Serialization
 using IntervalTrees
 using Graphs
 using MetaGraphs
-
-include("custom_lib/genomic_data.jl")
 
 const GENE_TYPE = "singletons"
 const RUN_COMPARISON = false

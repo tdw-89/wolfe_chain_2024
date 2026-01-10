@@ -4,12 +4,9 @@ using Serialization
 using CategoricalArrays
 using JSON
 
-include("custom_lib/load_gff.jl")
-include("custom_lib/genomic_data.jl")
-include("custom_lib/enrichment_utils.jl")
-include("custom_lib/te_utils.jl")
+using .EnrichmentUtils
 
-reload_peak_data = false
+reload_peak_data = true # 1/4/26
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -35,6 +32,7 @@ human_ref = loadgenome(human_gff, chrom_lengths_file)
 cds_df = CSV.read(cds_id_file, DataFrame, header=false)
 nmd_df = CSV.read(nmd_id_file, DataFrame, header=false)
 
+peak_data = nothing
 # Add the peak data
 if reload_peak_data
     peak_files = reduce(vcat, [[joinpath(root, fn) for fn in files] for (root, dirs, files) in walkdir(peak_data_dir)])
@@ -54,16 +52,16 @@ GC.gc()
 # Load the paralog info
 paralog_data = CSV.read(human_paralog_info, DataFrame)
 filter!(row -> row.dS <= 3, paralog_data)
-CSV.write("data/paralog_data_human.csv", paralog_data)
+CSV.write("../../dicty_data/paralog_data_human.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 
 # Get the global mean enrichment for H3K9me3 from TSS-500:TSS+500 for all coding genes
 global_mean = mean([
-                mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
-                for i in eachindex(human_ref.genes[2][1].samples)])
-                for gene in human_ref.genes[2]
-                if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1]
+    mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
+    for i in eachindex(human_ref.genes[2][1].samples)])
+    for gene in human_ref.genes[2]
+    if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1]
 ])
 
 # Plot the enrichment

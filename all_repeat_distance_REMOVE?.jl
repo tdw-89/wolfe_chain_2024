@@ -1,36 +1,23 @@
 include("prelude.jl")
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/te_utils.jl")
+using .RepeatUtils
 
 # Files:
-repeat_file = "../../dicty_data/AX4/genome_ver_2_7/dicty_repeats-families.stk"
-repeat_file_contigs = "../../dicty_data/AX4/genome_ver_2_7/repeat_modeler_output/RM_2530911.TueFeb132059322024/families-classified.stk"
+repeat_file = "../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
 gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
-te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
+te_id_file = "./blacklists/ensembl_te_ids_with_predicted.tsv"
 
 # Load genome data
 ref_genome = loadgenome(gff_source, chrom_lengths_file)
-chrom_conversion = Dict("DDB0232428" => "1",
-                        "DDB0232429" => "2",
-                        "DDB0232430" => "3",
-                        "DDB0232431" => "4",
-                        "DDB0232432" => "5",
-                        "DDB0232433" => "6")
-
+numbered_chroms = ["$i" for i in 1:6]
 
 
 # Add repeats to the reference genome object:
-repeat_df = parsestk(repeat_file)
-repeat_df_contigs = parsestk(repeat_file_contigs)
-filter!(row -> row.Chromosome in keys(chrom_conversion), repeat_df)
-repeat_df.Chromosome = [chrom_conversion[row.Chromosome] for row in eachrow(repeat_df)]
-convert_to_repeats!(ref_genome, repeat_df)
-convert_to_repeats!(ref_genome, repeat_df_contigs, allow_missing_scaffolds=true)
+repeat_df = CSV.read(repeat_file, DataFrame)
+convert_to_repeats!(ref_genome, repeat_df, allow_missing_scaffolds=true)
 # addrepeats!(ref_genome, repeat_file)
 
 # Get CDS genes not in blacklist and not in TE list:
@@ -71,7 +58,7 @@ for (i, gene) in enumerate(cds_genes)
         repeat_start = repeat_elem.repeat_start
         repeat_end = repeat_elem.repeat_end
 
-        if hasoverlap(repeat_elem.repeat_start, gene.gene_start, repeat_elem.repeat_end, gene.gene_end)
+        if GenomeTypes.hasoverlap(repeat_elem.repeat_start, gene.gene_start, repeat_elem.repeat_end, gene.gene_end)
 
             distance = 0
             break
@@ -86,4 +73,4 @@ for (i, gene) in enumerate(cds_genes)
     repeat_dist_df[i, :Repeat_end] = repeat_end
 end
 
-CSV.write("data/repeat_distance.csv", repeat_dist_df)
+CSV.write("../../dicty_data/repeat_distance.csv", repeat_dist_df)

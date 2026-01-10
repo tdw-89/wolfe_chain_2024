@@ -1,7 +1,6 @@
 include("prelude.jl")
 
-include("custom_lib/load_gff.jl")
-include("custom_lib/paralog_utils.jl")
+using .ParalogUtils
 
 # Full paralog info file
 human_paralog_info = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
@@ -19,7 +18,7 @@ rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt", "PercIDtq", "dS","dN"]
 # Identify the singletons
 singletons = unique(select(filter(row -> ismissing(row.ParalogID), paralog_data), :GeneID))
 filter!(row -> row.GeneID ∈ cds_df[!,1] && row.GeneID ∉ nmd_df[!,1], singletons)
-CSV.write("data/filtered/human_singletons_filt.csv", singletons)
+CSV.write("../../dicty_data/filtered/human_singletons_filt.csv", singletons)
 
 # Filter the paralog data
 filter!(row -> !ismissing(row[3]) && !ismissing(row[4]) && !ismissing(row.dS), paralog_data) # Filter to those with %ID info
@@ -32,4 +31,4 @@ rbh_df = rbh(paralog_data, scoring="mean")
 rbh_id_pairs = collect(zip(rbh_df.GeneID, rbh_df.ParalogID))
 filter!(row -> (row.GeneID, row.ParalogID) in rbh_id_pairs, paralog_data)
 
-CSV.write("data/filtered/human_paralog_info_filt.csv", paralog_data)
+CSV.write("../../dicty_data/filtered/human_paralog_info_filt.csv", paralog_data)
