@@ -2,9 +2,7 @@ include("prelude.jl")
 
 using Serialization
 
-include("custom_lib/load_gff.jl")
-include("custom_lib/genomic_data.jl")
-include("custom_lib/misc_utils.jl")
+using .MiscUtils
 
 reload_peak_data = false
 
@@ -13,7 +11,7 @@ peak_data_dir = "../../dicty_data/mammals/primates/h_sapiens/ENCODE_histone_mods
 
 # Add the peak data
 if reload_peak_data
-    peak_files = reduce(vcat, [map(fn -> joinpath(root, fn), files) for (root, dir, files) in walkdir(chip_peak_file_dir)])
+    peak_files = reduce(vcat, [map(fn -> joinpath(root, fn), files) for (root, dir, files) in walkdir(peak_data_dir)])
     peak_files = filter(fn -> endswith(fn, ".bed") || endswith(fn, ".bed.gz"), peak_files)
     peak_files = filter(fn -> contains(fn, "k9me3"), peak_files)
     peak_data = binpeaks(peak_files, chrom_lengths_file)

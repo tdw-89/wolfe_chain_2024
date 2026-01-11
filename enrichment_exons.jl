@@ -9,7 +9,7 @@ using IntervalTrees
 using Graphs
 using MetaGraphs
 
-const GENE_TYPE = "singletons"
+const GENE_TYPE = "all"
 const RUN_COMPARISON = false
 
 ###############
@@ -255,6 +255,6 @@ if RUN_COMPARISON
     duplicate_df = CSV.read("../../dicty_data/human_h3k9me3_exon_enrichment_duplicates.csv", DataFrame)
     weighted_vals_singleton = singleton_df.OverlapPerc .* singleton_df.Length
     weighted_vals_duplicate = duplicate_df.OverlapPerc .* duplicate_df.Length
-    p_val = pvalue(MannWhitneyUTest(weighted_vals_singleton, weighted_vals_duplicate))
+    p_val = pvalue(MannWhitneyUTest(weighted_vals_singleton, weighted_vals_duplicate)) # 2.3548744502196975e-57 last checked
 
 end

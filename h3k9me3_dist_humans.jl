@@ -2,8 +2,6 @@ include("prelude.jl")
 
 using Serialization
 
-include("custom_lib/genomic_data.jl")
-
 exon_coverage_file = "../../dicty_data/human_h3k9me3_exon_enrichment.csv"
 chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chromosome_lengths.txt"
 te_coverage_file = "../../dicty_data/h3k9me3_coverage_all.csv"

@@ -5,11 +5,9 @@ using NaturalSort
 using RollingFunctions
 using JSON
 
-# Custom lib src:
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/genomic_data.jl")
-include("./custom_lib/enrichment_utils.jl")
-include("./custom_lib/misc_utils.jl")
+
+using .EnrichmentUtils
+using .MiscUtils
 
 function avg_enrich(pair, inds, gene_range)
     range_1 = deepcopy(gene_range)
@@ -217,12 +215,12 @@ display(plot(scatter(x=rollmean(paralog_data[:,"dS"], 100), y=rollmean(paralog_d
 df_adj = findall(row -> row.AvgExprAdj != Inf, eachrow(paralog_data))
 quantile_vals_adj = quantile_vals[df_adj]
 df_adj = paralog_data[df_adj,:]
-quantile_text = parse_quantile(sort(unique(quantile_labels), lt=natural), digs=2)
+quantile_text = parse_quantile(sort(unique(String.(quantile_labels)), lt=natural), digs=2)
 adj_deciles = [log.(df_adj.AvgExprAdj[quantile_vals_adj .== q] .+ 0.5) for q in sort(unique(quantile_vals_adj))]
 display(plot([box_plt(adj_deciles[q], "$q") for q in sort(unique(quantile_vals_adj))], 
         merge(Layout(title="Adjusted Expression vs 𝑑𝑆"), box_layout_expr)))
 
-display(plot(scatter(x=rollmean(df_adj[:,"dS"], 100), 
+display(plot(scatter(x=rollmean(df_adj[:,"dS"], 100),
                      y=rollmean(log.(df_adj.AvgExprAdj .+ 0.5), 100), 
                      mode="markers", 
                      text=df_adj.GeneID, 

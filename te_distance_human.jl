@@ -3,10 +3,8 @@ include("prelude.jl")
 using FastaIO
 using Serialization
 
-# # custom lib:
-# include("custom_lib/load_gff.jl")
-# include("custom_lib/te_utils.jl")
-# include("custom_lib/misc_utils.jl")
+using .RepeatUtils
+using .MiscUtils
 
 only_h3k9me3 = false
 only_specific_type = true
@@ -117,7 +115,7 @@ Threads.@threads for i in eachindex(cds_genes)
         repeat_start = repeat_elem.repeat_start
         repeat_end = repeat_elem.repeat_end
 
-        if hasoverlap(repeat_elem.repeat_start, 
+        if GenomeTypes.hasoverlap(repeat_elem.repeat_start, 
                         temp_gene.gene_start, 
                         repeat_elem.repeat_end, 
                         temp_gene.gene_end)

@@ -8,7 +8,6 @@ paralog_file = "../../dicty_data/filtered/human_paralog_info_filt.csv"
 singleton_file = "../../dicty_data/filtered/human_singletons_filt.csv"
 dosage_sens_file = "../../dicty_data/lift_over_data_filtered.csv"
 
-
 # Load the distance data
 dist_df <- read.csv(te_dist_file)
 dist_df$TE_length <- dist_df$TE_end - dist_df$TE_start + 1

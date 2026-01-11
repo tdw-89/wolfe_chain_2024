@@ -16,9 +16,9 @@ dunns_test <- function(means_vec) {
   )
 }
 
-means_vecs_file <- "/Users/thomasd.wolfe/Library/CloudStorage/GoogleDrive-eccwolfe@gmail.com/My Drive/UML/Grad_school/research/code/analysis_scripts/dicty/final_code/data/julia_serialized/means_vecs_ds.json"
-means_vecs_human_file <- "/Users/thomasd.wolfe/Library/CloudStorage/GoogleDrive-eccwolfe@gmail.com/My Drive/UML/Grad_school/research/code/analysis_scripts/dicty/final_code/data/julia_serialized/means_vecs_dS_human.json"
-expr_deciles <- "/Users/thomasd.wolfe/Library/CloudStorage/GoogleDrive-eccwolfe@gmail.com/My Drive/UML/Grad_school/research/code/analysis_scripts/dicty/final_code/data/julia_serialized/expression_deciles.json"
+means_vecs_file <- "../../dicty_data/julia_serialized/means_vecs_ds.json"
+means_vecs_human_file <- "../../dicty_data/julia_serialized/means_vecs_dS_human.json"
+expr_deciles <- "../../dicty_data/julia_serialized/expression_deciles.json"
 
 # Enrich vs. dS:
 vec_list <- jsonlite::fromJSON(means_vecs_file)

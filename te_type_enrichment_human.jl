@@ -3,13 +3,11 @@ include("prelude.jl")
 using FastaIO
 using Serialization
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/enrichment_utils.jl")
-include("custom_lib/te_utils.jl")
-include("custom_lib/misc_utils.jl")
+using .EnrichmentUtils
+using .RepeatUtils
+using .MiscUtils
 
-reload_peak_data = false
+reload_peak_data = true
 
 # Files
 human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
@@ -21,7 +19,7 @@ chrom_lengths_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/chr
 
 # Add the peak data
 if reload_peak_data
-    peak_files = reduce(vcat, [map(fn -> joinpath(root, fn), files) for (root, dir, files) in walkdir(chip_peak_file_dir)])
+    peak_files = reduce(vcat, [map(fn -> joinpath(root, fn), files) for (root, dir, files) in walkdir(peak_data_dir)])
     peak_files = filter(fn -> endswith(fn, ".bed") || endswith(fn, ".bed.gz"), peak_files)
     peak_files = filter(fn -> contains(fn, "k9me3"), peak_files)
     peak_data = binpeaks(peak_files, chrom_lengths_file)
@@ -161,6 +159,6 @@ coverage_df_family.Overlap[end] = overlap_count / coverage_df_family.TotalN[end]
 CSV.write("../../dicty_data/h3k9me3_coverage_all.csv", coverage_df_family)
 
 coverage_gdf_family = groupby(coverage_df_family, :Type)
-coverage_df_type = combine(coverage_gdf_family, [:Coverage, :Overlap, :TotalN, :TotalBases] => ((c, o, n, b) -> (Coverage=mean(c, Weights(n)), Overlap=mean(o, Weights(b)), TotalN=sum(n), TotalBases=sum(b)) ) => AsTable)
+coverage_df_type = DataFrames.combine(coverage_gdf_family, [:Coverage, :Overlap, :TotalN, :TotalBases] => ((c, o, n, b) -> (Coverage=mean(c, Weights(n)), Overlap=mean(o, Weights(b)), TotalN=sum(n), TotalBases=sum(b)) ) => AsTable)
 sort!(coverage_df_type, :Coverage, rev=true)
 CSV.write("../../dicty_data/h3k9me3_coverage_type.csv", coverage_df_type)

@@ -2,12 +2,10 @@ include("prelude.jl")
 
 using Serialization
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/enrichment_utils.jl")
-include("custom_lib/te_utils.jl")
+using .EnrichmentUtils
+using .RepeatUtils
 
-reload_peak_data = false
+reload_peak_data = true
 te_type = "TE"
 
 # Peak files
@@ -69,8 +67,6 @@ end
 paralog_ids = vcat(paralog_data.GeneID, paralog_data.ParalogID)
 te_distances = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∉ paralog_ids && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
 te_distances_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ paralog_ids && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
-plot([box(y=te_distances, name="TE Distance", marker_color="blue"), 
-      box(y=te_distances_dups, name="TE Distance (Paralogs)", marker_color="red")])
 
 # What proportion of non-paralog genes overlap a TE vs. paralog genes?
 cont_table = [count(d -> d == 0, te_distances) count(d -> d == 0, te_distances_dups); 
@@ -87,7 +83,7 @@ pvalue(MannWhitneyUTest(te_distances, te_distances_dups))
 #                                                                                                           A: Yes - LINEs, -> 0.0018902814592321418 -> adjust(Bonferroni) -> 0.007561125836928567
 #                                                                                                           A: Yes - All TEs) -> 0.0035883749357294805 -> adjust(Bonferroni) -> 0.014353499742917922
 pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
-adjust([0.1764005443808332, 0.0003089060474037944, 0.0018902814592321418, 0.0035883749357294805], Bonferroni())
+adjust([0.1764005443808332, 0.0003089060474037944, 0.0018902814592321418, 0.0035883749357294805], BenjaminiHochberg())
 
 # What is the distribution of TE distances among coding genes w/ vs. w/o H3K9me3?
 # What about among just the filtered paralogs?

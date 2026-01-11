@@ -26,7 +26,8 @@ insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
 
 # Genome data
-gff_file_dir = "../../dicty_data/AX4/genome_ver_2_7/gff3"
+
+gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/chromosome_lengths.txt"
 singleton_list = CSV.read("../../dicty_data/singleton_list_unfilt.txt", DataFrame)[:,1]
 

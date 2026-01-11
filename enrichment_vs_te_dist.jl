@@ -1,9 +1,8 @@
 include("prelude.jl")
 
-# custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/enrichment_utils.jl")
-include("custom_lib/te_utils.jl")
+using .EnrichmentUtils
+using .RepeatUtils
+using CategoricalArrays
 
 # Duplicate filtering parameter:
 id_method = "dS" #
@@ -51,7 +50,6 @@ ref_genome = loadgenome(gff_source, chrom_lengths_file)
 
 # Load the TE distance data:
 te_dist_df = CSV.read(te_dist_file, DataFrame)
-# te_dist_df.Distance = log10.(te_dist_df.Distance .+ 1)
 
 # Load the paralog data:
 paralog_data = CSV.read(paralog_file, DataFrame)
@@ -70,19 +68,15 @@ peak_files = [readdir(chip_peak_file_dir, join=true); readdir(atac_peak_file_dir
 peak_files = filter(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_files = filter(fn -> !contains(fn, r"_S[AB]+_"), peak_files)
 peak_data = binpeaks(peak_files, chrom_lengths_file)
-significant_regions = CSV.read("../../dicty_data/sig_regions.csv", DataFrame)
 addtogenes!(ref_genome, peak_data)
 
 # Which genes have H3K9me3?
 ids_with_k9me3 = []
-k9me3_start_offset = only(significant_regions[significant_regions.Mark .== "K9me3",:Start])
-k9me3_end_offset = only(significant_regions[significant_regions.Mark .== "K9me3",:End])
-
 for id in te_dist_df.GeneID
     gene = get(ref_genome, id)
     
     hasK9me3 = any([
-        sum(getsiginrange(gene, GeneRange(TSS(), TES(), k9me3_start_offset, k9me3_end_offset), ind)) > 0 for ind in [3, 6, 9]
+        sum(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), ind)) > 0 for ind in [3, 6, 9]
     ])
     if hasK9me3
         push!(ids_with_k9me3, id)

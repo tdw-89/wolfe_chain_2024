@@ -3,6 +3,7 @@ library(circlize)
 library(regioneR)
 library(rtracklayer)
 library(dplyr)
+conflicts_prefer(dplyr::filter)
 
 # Files
 te_files_dir <- "../../dicty_data/AX4/genome_ver_2_7/TEs"
