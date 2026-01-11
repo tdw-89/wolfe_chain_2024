@@ -38,22 +38,26 @@ sample_names = ["K27ac",
                 "ATAC"]
 for i in eachindex(sample_names)
     fig = make_subplots(
-        rows=2, cols=4,
-        column_widths=[0.5*0.75, 1*0.75, 0.5*0.75, 0.25],
-        row_heights=[0.5, 0.5],
+        rows=4, cols=3,
+        column_widths=[0.5*0.75, 1*0.75, 0.5*0.75],
+        # NOTE: Plotly applies row_heights bottom→top.
+        # We want: (top) heatmap, bar, heatmap, bar (bottom)
+        row_heights=[0.30, 0.30, 0.30, 0.30],
         horizontal_spacing=0.002,
-        vertical_spacing=0.02,
+        vertical_spacing=0.07,
         # shared_xaxes=true,
         # shared_yaxes=true,
-        specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="bar");
-               Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="bar")]
+        specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
+               Spec(kind="bar", colspan=3) missing missing;
+               Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
+               Spec(kind="bar", colspan=3) missing missing]
     );
 
     # Expression enrichment plots:
     add_trace!(fig, tss_expr_enrich[1][i], row=1, col=1)
     add_trace!(fig, body_expr_enrich[1][i], row=1, col=2)
     add_trace!(fig, tes_expr_enrich_ends[1][i], row=1, col=3)
-    add_trace!(fig, box_plots ? bar_expr[i].plot.data[1] : bar_expr[i], row=1, col=4)
+    add_trace!(fig, box_plots ? bar_expr[i].plot.data[1] : bar_expr[i], row=2, col=1)
     relayout!(fig, yaxis=attr(tickfont=y_tick_font, 
                               title="log(TPM + 0.5)", 
                               titlefont=attr(family = "Times New Roman", 
@@ -65,15 +69,27 @@ for i in eachindex(sample_names)
                 yaxis3=attr(showticklabels=false),
                 xaxis3=attr(range=[0,500], 
                             showticklabels=false),
-                yaxis4=attr(showticklabels=false),
-                xaxis4=attr(range=[0,4],
-                            showticklabels=false))
+                yaxis4=attr(showticklabels=true,
+                            tickfont=y_tick_font,
+                            title="Gene category",
+                            titlefont=attr(family="Times New Roman", size=title_font_size),
+                            showline=true,
+                            linecolor="black",
+                            linewidth=2,
+                            mirror=true),
+                xaxis4=attr(tickfont=x_tick_font,
+                            title="log(TPM + 0.5)",
+                            titlefont=attr(family="Times New Roman", size=title_font_size),
+                            showline=true,
+                            linecolor="black",
+                            linewidth=2,
+                            mirror=true))
 
     # dS enrichment plots:
-    add_trace!(fig, tss_dS_enrich[1][i], row=2, col=1)
-    add_trace!(fig, body_dS_enrich[1][i], row=2, col=2)
-    add_trace!(fig, tes_dS_enrich_ends[1][i], row=2, col=3)
-    add_trace!(fig, box_plots ? bar_dS[i].plot.data[1] : bar_dS[i], row=2, col=4)
+    add_trace!(fig, tss_dS_enrich[1][i], row=3, col=1)
+    add_trace!(fig, body_dS_enrich[1][i], row=3, col=2)
+    add_trace!(fig, tes_dS_enrich_ends[1][i], row=3, col=3)
+    add_trace!(fig, box_plots ? bar_dS[i].plot.data[1] : bar_dS[i], row=4, col=1)
     relayout!(fig, 
                 yaxis5=attr(tickfont=y_tick_font, 
                                title="𝑑𝑆", 
@@ -96,52 +112,99 @@ for i in eachindex(sample_names)
                             tickvals=x3_vals, 
                             ticktext=["+" .* string.(x3_vals)...], 
                             tickfont=x_tick_font),
-                yaxis8=attr(showticklabels=false),
-                xaxis8=attr(range=[0,4], tickfont=x_tick_font),
+                yaxis8=attr(showticklabels=true,
+                            tickfont=y_tick_font,
+                            title="Gene category",
+                            titlefont=attr(family="Times New Roman", size=title_font_size),
+                            showline=true,
+                            linecolor="black",
+                            linewidth=2,
+                            mirror=true),
+                xaxis8=attr(tickfont=x_tick_font,
+                            title="𝑑𝑆",
+                            titlefont=attr(family="Times New Roman", size=title_font_size, weight="bold"),
+                            showline=true,
+                            linecolor="black",
+                            linewidth=2,
+                            mirror=true),
                 title=sample_names[i], 
                 titlefont=attr(size=title_font_size, 
                                family="Times New Roman"))
 
     relayout!(fig, showlegend=false,
-                   plot_bgcolor="rgba(0,0,0,0)")
+                   plot_bgcolor="rgba(0,0,0,0)",
+                   height=1600)
     
-    relayout!(fig, shapes = reduce(vcat, 
-    [
-        [   # Vertical lines for subplots 1 & 4
+        relayout!(fig, shapes = reduce(vcat, 
+        [
+        [   # Vertical lines for TSS heatmaps (rows 1 & 3, col 1)
         (type = "line",
          x0 = val, 
          x1 = val, 
          y0 = 0, 
          y1 = 1, 
          xref = "x", 
-         yref = "paper", 
+         yref = "y domain", 
          line = (color = line_color, 
-                 dash = line_type))
+             dash = line_type))
         for val in x1_vals],
-        [   # Vertical lines for subplots 2 & 5
+        [
+        (type = "line",
+         x0 = val, 
+         x1 = val, 
+         y0 = 0, 
+         y1 = 1, 
+         xref = "x5", 
+         yref = "y5 domain", 
+         line = (color = line_color, 
+             dash = line_type))
+        for val in x1_vals],
+        [   # Vertical lines for body heatmaps (rows 1 & 3, col 2)
         (type = "line",
          x0 = val, 
          x1 = val, 
          y0 = 0, 
          y1 = 1, 
          xref = "x2", 
-         yref = "paper", 
+         yref = "y2 domain", 
          line = (color = line_color, 
-                 dash = line_type))
+             dash = line_type))
         for val in x2_vals],
-        [   # Vertical lines for subplots 3 & 6
+        [
+        (type = "line",
+         x0 = val, 
+         x1 = val, 
+         y0 = 0, 
+         y1 = 1, 
+         xref = "x6", 
+         yref = "y6 domain", 
+         line = (color = line_color, 
+             dash = line_type))
+        for val in x2_vals],
+        [   # Vertical lines for TES heatmaps (rows 1 & 3, col 3)
         (type = "line",
          x0 = val,
          x1 = val,
          y0 = 0,
          y1 = 1,
          xref = "x3",
-         yref = "paper",
+         yref = "y3 domain",
          line = (color = line_color, 
-                 dash = line_type))
+             dash = line_type))
+        for val in x3_vals],
+        [
+        (type = "line",
+         x0 = val,
+         x1 = val,
+         y0 = 0,
+         y1 = 1,
+         xref = "x7",
+         yref = "y7 domain",
+         line = (color = line_color, 
+             dash = line_type))
         for val in x3_vals]
-    ]
-    ))
+        ]
+        ))
     
     if save_plots
         savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS.html"))
@@ -152,19 +215,23 @@ end
 
 # Human:
 fig_h = make_subplots(
-        rows=1, cols=4,
-        column_widths=[0.5*0.75, 1*0.75, 0.5*0.75, 0.25],
-        horizontal_spacing=0.005,
+    rows=2, cols=3,
+    column_widths=[0.5*0.75, 1*0.75, 0.5*0.75],
+    # NOTE: Plotly applies row_heights bottom→top.
+    row_heights=[0.30, 0.30],
+    horizontal_spacing=0.005,
+    vertical_spacing=0.07,
         # shared_xaxes=true,
         # shared_yaxes=true,
-        specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="bar")]
+    specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
+           Spec(kind="bar", colspan=3) missing missing]
 );
 
 # dS enrichment plots:
 add_trace!(fig_h, tss_dS_enrich_human[1][1], row=1, col=1)
 add_trace!(fig_h, body_dS_enrich_human[1][1], row=1, col=2)
 add_trace!(fig_h, tes_dS_enrich_human[1][1], row=1, col=3)
-add_trace!(fig_h, box_plots ? bar_dS_human[1].plot.data[1] : bar_dS_human[1], row=1, col=4)
+add_trace!(fig_h, box_plots ? bar_dS_human[1].plot.data[1] : bar_dS_human[1], row=2, col=1)
 relayout!(fig_h, yaxis=attr(tickfont=y_tick_font, 
                             title="𝑑𝑆", 
                             titlefont=attr(family = "Times New Roman", 
@@ -185,47 +252,60 @@ relayout!(fig_h, yaxis=attr(tickfont=y_tick_font,
                         tickvals=x3_vals, 
                         ticktext=["+" .* string.(x3_vals)...], 
                         tickfont=x_tick_font),
-            yaxis4=attr(showticklabels=false),
-            xaxis4=attr(range=[0,4], tickfont=x_tick_font),
+            yaxis4=attr(showticklabels=true,
+                        tickfont=y_tick_font,
+                        title="Gene category",
+                        titlefont=attr(family="Times New Roman", size=title_font_size),
+                        showline=true,
+                        linecolor="black",
+                        linewidth=2,
+                        mirror=true),
+            xaxis4=attr(tickfont=x_tick_font,
+                        title="𝑑𝑆",
+                        titlefont=attr(family="Times New Roman", size=title_font_size, weight="bold"),
+                        showline=true,
+                        linecolor="black",
+                        linewidth=2,
+                        mirror=true),
             title="H3K9me3",
             titlefont=attr(size=title_font_size, 
                            family="Times New Roman"))
 
 relayout!(fig_h, showlegend=false)
 relayout!(fig_h, title="H3K9me3")
-relayout!(fig_h, plot_bgcolor="rgba(0,0,0,0)")
+relayout!(fig_h, plot_bgcolor="rgba(0,0,0,0)", height=1200)
 relayout!(fig_h, shapes = reduce(vcat, 
     [
-        [   # Vertical lines for subplots 1 & 4
+        [   # Vertical lines for subplot 1
         (type = "line",
          x0 = val, 
          x1 = val, 
          y0 = 0, 
          y1 = 1, 
          xref = "x", 
-         yref = "paper", 
+         yref = "y domain", 
          line = (color = line_color, 
                  dash = line_type))
         for val in x1_vals],
-        [   # Vertical lines for subplots 2 & 5
+        [   # Vertical lines for subplot 2
         (type = "line",
          x0 = val,
          x1 = val,
          y0 = 0,
          y1 = 1,
          xref = "x2",
-         yref = "paper",
+         yref = "y2 domain",
          line = (color = line_color,
                  dash = line_type))
         for val in x2_vals],
-        [   # Vertical lines for subplots 3 & 6
+        [   # Vertical lines for subplot 3
         (type = "line",
          x0 = val, 
          x1 = val, 
          y0 = 0, 
          y1 = 1, 
          xref = "x3", 
-         yref = "paper", 
+         yref = "y3 domain", 
          line = (color = line_color,
                  dash = line_type))
         for val in x3_vals]

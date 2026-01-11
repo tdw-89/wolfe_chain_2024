@@ -122,7 +122,7 @@ bar_plots, kw_tests, means_vecs = plot_bar_expr(
     global_means_vec, 
     [0,4], 
     true, 
-    true
+    false
     );
 p_vals_perm_cor = [
     get_cor_expr(

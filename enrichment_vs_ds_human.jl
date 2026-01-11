@@ -107,7 +107,7 @@ bar_plots, kw_test, means_vecs = plot_bar(paralog_data,
                     [global_mean],
                     [0,4],
                     true,
-                    true);
+                    false);
 
 p_vals_perm_cor = get_cor(
     paralog_data,

@@ -131,7 +131,7 @@ bar_plots, kw_tests, means_vecs =
         filtered_paralog_list, 
         sample_inds_vec, 
         [gene_range, gene_range, gene_range, gene_range], # ATAC
-            global_means_vec, [0,4], true, true);
+            global_means_vec, [0,4], true, false);
 p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
                             [gene_range,
                              gene_range,
