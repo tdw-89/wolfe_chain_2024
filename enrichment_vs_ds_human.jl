@@ -6,7 +6,7 @@ using JSON
 
 using .EnrichmentUtils
 
-reload_peak_data = true # 1/4/26
+reload_peak_data = true
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -35,8 +35,10 @@ nmd_df = CSV.read(nmd_id_file, DataFrame, header=false)
 peak_data = nothing
 # Add the peak data
 if reload_peak_data
-    peak_files = reduce(vcat, [[joinpath(root, fn) for fn in files] for (root, dirs, files) in walkdir(peak_data_dir)])
-    filter!(fn -> contains(fn, ".bed"), peak_files)
+    peak_files = 
+        reduce(vcat, [[joinpath(root, fn) for fn in files] for (root, dirs, files) in walkdir(peak_data_dir) if contains(lowercase(root), "h3k9me3")]) |>
+        filter(fn -> contains(fn, ".bed.gz")) |>
+        unique
     peak_data = binpeaks(peak_files, chrom_lengths_file)
     serialize("../../dicty_data/julia_serialized/human_h3k9me3_exper.jls", peak_data)
 
@@ -98,7 +100,7 @@ tes_enrich = plot_enrich_region(paralog_data,
                                 return_figs=true)
 serialize("../../dicty_data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
 
-bar_plots, p_vals, means_vecs = plot_bar(paralog_data,
+bar_plots, kw_test, means_vecs = plot_bar(paralog_data,
                     human_ref.genes[2],
                     [collect(eachindex(human_ref.genes[2][1].samples))],
                     [GeneRange(TSS(), TES(), -500, 500)],
@@ -107,11 +109,13 @@ bar_plots, p_vals, means_vecs = plot_bar(paralog_data,
                     true,
                     true);
 
-p_vals_perm_cor = get_cor(paralog_data,
-                          GeneRange(TSS(),TES(), -500, 500),
-                          [1:16...],
-                          human_ref,
-                          global_mean)
+p_vals_perm_cor = get_cor(
+    paralog_data,
+    GeneRange(TSS(),TES(), -500, 500),
+    [1:16...],
+    human_ref,
+    global_mean
+    )
 
 serialize("../../dicty_data/julia_serialized/human_bar_plots_dS.jls", bar_plots)
 serialize_to_json("../../dicty_data/julia_serialized/means_vecs_dS_human.json", means_vecs)

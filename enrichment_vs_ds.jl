@@ -16,7 +16,13 @@ function serialize_to_json(file_path, vecs)
     end
 end
 
-gene_range = GeneRange(TSS(), TES(), -500, 500)
+gene_range = 
+    GeneRange(
+    TSS(),
+    TES(),
+    -500,
+    500
+    )
 
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
@@ -84,7 +90,7 @@ tss_enrich = plot_enrich_region(
     paralog_data, 
     filtered_paralog_list, 
     sample_inds_vec, 
-    [GeneRange(TSS(), TSS(), -500, 0) for i in 1:4], 
+    [GeneRange(TSS(), TSS(), -500, -1) for i in 1:4], 
     fold_change_over_mean=true, 
     global_means=global_means_vec,
     z_min=0,
@@ -108,7 +114,7 @@ serialize(joinpath(ser_data_dir, "body_enrich_plots_dS.jls"), body_enrich)
 tes_enrich = plot_enrich_region(paralog_data,
 filtered_paralog_list,
     sample_inds_vec,
-    [GeneRange(TES(), TES(), 0, 500) for i in 1:4],
+    [GeneRange(TES(), TES(), 1, 500) for i in 1:4],
     fold_change_over_mean=true,
     global_means=global_means_vec,
     z_min=0,

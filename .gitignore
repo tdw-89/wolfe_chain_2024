@@ -6,3 +6,4 @@ pre_processing/
 .vscode/
 .Rproj.user/
 ..gitignore.un~
+temp_data/

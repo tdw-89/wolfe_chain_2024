@@ -3,7 +3,7 @@ include("prelude.jl")
 
 # Filtering parameters
 filter_zeros = true
-keep_tes = true
+keep_tes = false
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
@@ -50,7 +50,6 @@ for (i, gene) in enumerate(unique_genes)
 end
 
 # Filter
-
 filter!(row -> row.GeneID ∉ blacklist, expr_data_combined)
 filter!(row -> row.GeneID in cds_ids, expr_data_combined)
 

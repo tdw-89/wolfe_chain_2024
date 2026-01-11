@@ -3,10 +3,10 @@ library(MASS)
 library(tidyverse)
 library(pscl)
 
-te_dist_file = "../../dicty_data/te_distance_human_TE.csv"
-paralog_file = "../../dicty_data/filtered/human_paralog_info_filt.csv"
-singleton_file = "../../dicty_data/filtered/human_singletons_filt.csv"
-dosage_sens_file = "../../dicty_data/lift_over_data_filtered.csv"
+te_dist_file <- "../../dicty_data/te_distance_human_TE.csv"
+paralog_file <- "../../dicty_data/filtered/human_paralog_info_filt.csv"
+singleton_file <- "../../dicty_data/filtered/human_singletons_filt.csv"
+dosage_sens_file <- "../../dicty_data/lift_over_data_filtered.csv"
 
 # Load the distance data
 dist_df <- read.csv(te_dist_file)

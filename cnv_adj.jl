@@ -16,7 +16,7 @@ function avg_input_count(gene_id::S, ref_genome::RefGenome, input_counts::Sample
 end
 
 # Expression data
-expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_2_single.tsv"
+expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
 expr_data = CSV.read(expr_data_file, DataFrame)
 rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 select!(expr_data, ["GeneID", "F", "M", "V"])

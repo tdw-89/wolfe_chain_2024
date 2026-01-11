@@ -21,7 +21,6 @@ universal_range = GeneRange(TSS(), TES(), -500, 500)
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
-sig_region_file = "../../dicty_data/sig_regions.csv"
 
 # dicty ensembl 52 genome data
 gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
@@ -115,7 +114,6 @@ tes_enrich = plot_enrich_expr_region(expr_data,
 
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
 
-sig_region_df = CSV.read(sig_region_file, DataFrame)
 bar_plots, kw_tests, means_vecs = plot_bar_expr(
     expr_data, 
     filtered_gene_list, 
@@ -126,10 +124,14 @@ bar_plots, kw_tests, means_vecs = plot_bar_expr(
     true, 
     true
     );
-p_vals_perm_cor = [get_cor_expr(expr_data,
-                    universal_range,
-                    sample_ind,
-                    ref_genome) for sample_ind in sample_inds_vec]
+p_vals_perm_cor = [
+    get_cor_expr(
+        expr_data,
+        universal_range,
+        sample_ind,
+        ref_genome
+    ) for sample_ind in sample_inds_vec
+    ]
 adj_pvals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
 adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)
