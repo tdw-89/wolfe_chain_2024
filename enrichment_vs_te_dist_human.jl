@@ -5,6 +5,31 @@ using Serialization
 using .EnrichmentUtils
 using .RepeatUtils
 
+# Collect test results for summary table at end
+test_results = DataFrame(
+    Test=String[],
+    PValue=Float64[],
+    TestStatistic=Float64[],
+    StatisticSymbol=String[],
+    Description=String[]
+)
+
+function get_statistic(test)
+    if hasproperty(test, :U)
+        return (Float64(getproperty(test, :U)), "U")
+    elseif hasproperty(test, :ω)
+        return (Float64(getproperty(test, :ω)), "ω")  # odds ratio parameter
+    else
+        error("Unsupported test type for statistic extraction: $(typeof(test))")
+    end
+end
+
+function record_test!(results::DataFrame, label::AbstractString, test, description::AbstractString)
+    stat_val, stat_sym = get_statistic(test)
+    push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, String(description)))
+    return test
+end
+
 reload_peak_data = true
 te_type = "TE"
 
@@ -56,12 +81,15 @@ for id in te_dist_df.GeneID
     gene = get(ref_genome, id)
     
     has_k9 = any([
-        any(sum(getsiginrange(gene, GeneRange(REGION(), REGION(), 0, 0), ind)) > 0) for ind in eachindex(gene.samples)
+        any(sum(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), ind)) > 0) for ind in eachindex(gene.samples)
     ])
     if has_k9
         push!(ids_with_k9me3, id)
     end
 end
+
+# DEBUG REMOVE
+ref_genome = deserialize("./temp_data/ref.jls")
 
 # TE distance distribution among filtered coding genes vs paralogs without H3K9me3:
 paralog_ids = vcat(paralog_data.GeneID, paralog_data.ParalogID)
@@ -69,58 +97,54 @@ te_distances = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id 
 te_distances_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ paralog_ids && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
 
 # What proportion of non-paralog genes overlap a TE vs. paralog genes?
-cont_table = [count(d -> d == 0, te_distances) count(d -> d == 0, te_distances_dups); 
+cont_table = [count(d -> d == 0, te_distances) count(d -> d == 0, te_distances_dups);
               count(d -> d > 0, te_distances) count(d -> d > 0, te_distances_dups)]
 
-# Are the two distributions significantly different? (A: No - LTR, <- 0.41264004228669854 -> adjust(Bonferroni) -> 1
-#                                                     A: Yes - SINEs, <- 9.416765131506125e-5 -> adjust(Bonferroni) -> 0.000376670605260245
-#                                                     A: Yes - LINEs, <- 0.003829015903780406 -> adjust(Bonferroni) -> 0.015316063615121623
-#                                                     A: Yes - All TEs) <- 0.0017718660013885204 -> adjust(Bonferroni) -> 0.007087464005554081
-pvalue(MannWhitneyUTest(te_distances, te_distances_dups))
+# Are the two distributions significantly different? (A: Yes - All TEs) <- 0.0010287722758197094
+record_test!(test_results,
+    "MannWhitneyUTest (TE distance; non-paralog vs paralog; excluding H3K9me3)",
+    MannWhitneyUTest(te_distances, te_distances_dups),
+    "Mann–Whitney U test: compares TE-distance distributions between non-paralog and paralog genes (excluding genes with H3K9me3); U is the rank-sum-based test statistic.")
 
-# Are the proportions of genes overlapping a TE significantly different between paralogs and non-paralogs? (A: No - LTRs, -> 0.1764005443808332 -> adjust(Bonferroni) ->  0.7056021775233328
-#                                                                                                           A: Yes - SINEs, -> 0.0003089060474037944 -> adjust(Bonferroni) -> 0.0012356241896151776
-#                                                                                                           A: Yes - LINEs, -> 0.0018902814592321418 -> adjust(Bonferroni) -> 0.007561125836928567
-#                                                                                                           A: Yes - All TEs) -> 0.0035883749357294805 -> adjust(Bonferroni) -> 0.014353499742917922
-pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
-adjust([0.1764005443808332, 0.0003089060474037944, 0.0018902814592321418, 0.0035883749357294805], BenjaminiHochberg())
+# Are the proportions of genes overlapping a TE significantly different between paralogs and non-paralogs? (A: Yes - All TEs) -> 0.0021563409800988667
+record_test!(test_results,
+    "FisherExactTest (TE overlap vs no overlap; non-paralog vs paralog; excluding H3K9me3)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the TE-overlap proportion (Distance==0) differs between non-paralog and paralog genes (excluding genes with H3K9me3).")
 
 # What is the distribution of TE distances among coding genes w/ vs. w/o H3K9me3?
 # What about among just the filtered paralogs?
 te_distances_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∉ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 
-# Is the distribution of TE distances significantly different between genes with and without K9me3? (A: Yes - LTRs,
-#                                                                                                    A: Yes - LINEs,
-#                                                                                                    A: Yes - SINEs,
-#                                                                                                    A: Yes - All TEs) -> 3.547289538993912e-60
+# Is the distribution of TE distances significantly different between genes with and without K9me3? (A: Yes - All TEs) -> 2.6419280524529124e-78
 plot([box(y=te_distances_k9me3, name="TE Distance w/ K9me3", marker_color="blue"), 
       box(y=te_distances, name="TE Distance w/o k9me3", marker_color="red")])
-pvalue(MannWhitneyUTest(te_distances_k9me3, te_distances_no_k9me3))
+record_test!(test_results,
+    "MannWhitneyUTest (TE distance; with vs without H3K9me3; non-paralogs)",
+    MannWhitneyUTest(te_distances_k9me3, te_distances_no_k9me3),
+    "Mann–Whitney U test: compares TE-distance distributions between non-paralog genes with H3K9me3 vs without.")
 cont_table = [count(d -> d == 0, te_distances_k9me3) count(d -> d == 0, te_distances_no_k9me3); 
               count(d -> d > 0, te_distances_k9me3) count(d -> d > 0, te_distances_no_k9me3)]
 
-# Are the proportions of genes overlapping a TE significantly different between genes with and without K9me3? (A: Yes - LTRs,
-#                                                                                                           A: Yes - SINEs,
-#                                                                                                           A: Yes - LINEs,
-#                                                                                                           A: Yes - All TEs) -> 3.9994659703972094e-66
-pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
+# Are the proportions of all genes overlapping a TE significantly different between genes with and without K9me3? (A: Yes - All TEs) -> 0.0021563409800988667
+record_test!(test_results,
+    "FisherExactTest (TE overlap vs no overlap; with vs without H3K9me3; non-paralogs)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the TE-overlap proportion (Distance==0) differs between non-paralog genes with H3K9me3 vs without.")
 
-# Are the distributions of TE distances significantly different between paralogs with and without K9me3? (A: Yes - LTRs,
-#                                                                                                         A: Yes - SINEs,
-#                                                                                                         A: Yes - LINEs
-#                                                                                                         A: Yes - All TEs) -> 1.1686502276252259e-45
+# Are the distributions of TE distances significantly different between paralogs with and without K9me3? (A: Yes - All TEs) -> 1.9360047325770461e-59
 te_distances_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ ids_with_k9me3 && id ∈ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> !(id ∈ ids_with_k9me3) && id ∈ paralog_ids, te_dist_df.GeneID)]
 display(plot([box(y=te_distances_k9me3_dups, name="TE Distance w/ K9me3 (Paralogs)", marker_color="blue"), 
       box(y=te_distances_dups, name="TE Distance w/o k9me3 (Paralogs)", marker_color="red")],
       Layout(yaxis=attr(title="TE Distance"), plot_bgcolor="rgba(0,0,0,0)")))
-pvalue(MannWhitneyUTest(te_distances_k9me3_dups, te_distances_no_k9me3_dups))
+record_test!(test_results,
+    "MannWhitneyUTest (TE distance; paralogs with vs without H3K9me3)",
+    MannWhitneyUTest(te_distances_k9me3_dups, te_distances_no_k9me3_dups),
+    "Mann–Whitney U test: compares TE-distance distributions between paralogs with H3K9me3 vs without.")
 
-# Are the ratios of TE overlap significantly different between paralogs with and without K9me3? (A: Yes - LTRs,
-#                                                                                                A: Yes - SINEs,
-#                                                                                                A: Yes - LINEs,
-#                                                                                                A: Yes - All TEs) -> 2.866036139619633e-48
+# Are the ratios of TE overlap significantly different between paralogs with and without K9me3? (A: Yes - All TEs) -> 25.493113707490779e-66
 plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"], 
          y=[count(d -> d == 0, te_distances_k9me3_dups)/length(te_distances_k9me3_dups), 
             count(d -> d == 0, te_distances_no_k9me3_dups)/length(te_distances_no_k9me3_dups)]),
@@ -128,10 +152,10 @@ plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"],
 cont_table = [count(d -> d == 0, te_distances_k9me3_dups) count(d -> d == 0, te_distances_no_k9me3_dups); 
               count(d -> d > 0, te_distances_k9me3_dups) count(d -> d > 0, te_distances_no_k9me3_dups)]
 
-pvalue(FisherExactTest(cont_table[1, 1], 
-                       cont_table[1, 2], 
-                       cont_table[2, 1], 
-                       cont_table[2, 2]))
+record_test!(test_results,
+    "FisherExactTest (TE overlap vs no overlap; paralogs with vs without H3K9me3)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the TE-overlap proportion (Distance==0) differs between paralogs with H3K9me3 vs without.")
 
 # Triplosensitivity vs. TE distance vs. K9me3:
 significant_overlap_df = CSV.read(significant_overlap_file, DataFrame)
@@ -157,9 +181,11 @@ yaxis=attr(gridcolor="lightgray",
            gridwidth=1.5))
 ))
 
-# Are paralogs with H3K9me3 more likely to be triplosensitive? (A: No)
-pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], 
-                        indiv_df.pTriplo[indiv_df.HasK9me3 .== false]))
+# Are paralogs with H3K9me3 more likely to be triplosensitive? (A: No - 0.6909564111737734)
+record_test!(test_results,
+    "MannWhitneyUTest (pTriplo; paralogs with vs without H3K9me3)",
+    MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], indiv_df.pTriplo[indiv_df.HasK9me3 .== false]),
+    "Mann–Whitney U test: compares triplosensitivity scores (pTriplo) between paralogs with H3K9me3 vs without.")
 
 display(plot([
     box(y=indiv_df.pTriplo[indiv_df.TEDistance .<= 0], name="TE overlap", marker_color="blue"),
@@ -169,41 +195,22 @@ Layout(plot_bgcolor="rgba(0,0,0,0)",
 yaxis=attr(gridcolor="lightgray",
            gridwidth=1.5))))
 
-# Are genes with TE overlap more likely to be triplosensitive? (A: No - LTR -> 0.479435080559795,
-#                                                               A: Yes - SINEs -> 1.2221709967990017e-8,
-#                                                               A: Yes - LINEs -> 3.7744741554628688e-6,
-#                                                               A: Yes - DNA TEs -> 1.0166622340827324e-9,
-#                                                               A: Yes - All TEs -> 8.059948448185499e-6,
-#                                                               )
-pvalue(MannWhitneyUTest(indiv_df.pTriplo[indiv_df.TEDistance .<= 0], indiv_df.pTriplo[indiv_df.TEDistance .> 0]))
+# Are genes with TE overlap more likely to be triplosensitive? (A: Yes - All TEs -> 8.059948448185499e-6)
+record_test!(test_results,
+    "MannWhitneyUTest (pTriplo; TE overlap vs no TE overlap)",
+    MannWhitneyUTest(indiv_df.pTriplo[indiv_df.TEDistance .<= 0], indiv_df.pTriplo[indiv_df.TEDistance .> 0]),
+    "Mann–Whitney U test: compares pTriplo between genes overlapping a TE (TEDistance<=0) vs not overlapping (TEDistance>0).")
 
 cont_table = [count(sens -> sens >= 0.5, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]) count(sens -> sens < 0.5, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]); 
               count(sens -> sens >= 0.5, indiv_df.pTriplo[indiv_df.TEDistance .> 0]) count(sens -> sens < 0.5, indiv_df.pTriplo[indiv_df.TEDistance .> 0])]
 
-pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
+record_test!(test_results,
+    "FisherExactTest (pTriplo≥0.5 vs <0.5; TE overlap vs no overlap)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the fraction of triplosensitive genes (pTriplo≥0.5) differs between TE-overlapping vs non-overlapping genes.")
 
-# High-confidence sensitivity vs. TE distance vs. K9me3:
-confidence_cutoff = 0.93
+# --- Summary table of hypothesis tests ---
+display(test_results)
 
-# Are high-confidence triplosensitive genes closer to TEs? (A: ? - LTR,
-#                                                           A: Yes - SINEs,
-#                                                           A: No - LINEs,
-#                                                           A: Yes - All TEs) -> 0.03803689084188746
-pvalue(MannWhitneyUTest(indiv_df.TEDistance[indiv_df.pTriplo .>= confidence_cutoff], indiv_df.TEDistance[indiv_df.pTriplo .< confidence_cutoff]))
-
-# Are high-confidence triplosensitive genes more likely to have H3K9me3? (A: No)
-cont_table1 = [count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== true]); 
-              count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.HasK9me3 .== false])]
-
-sens_greater1 = (cont_table1[1, 1]/cont_table1[2,1]) > (cont_table1[1, 2]/cont_table1[2, 2])
-p1 = pvalue(FisherExactTest(cont_table1[1, 1], cont_table1[1, 2], cont_table1[2, 1], cont_table1[2, 2]))
-
-# Are high-confidence triplosensitive genes more likely to overlap a TE? (A: No - LTR,
-#                                                                         A: Yes - SINEs,
-#                                                                         A: Yes - LINEs,
-#                                                                         A: Yes - All TEs) -> 0.02313507995779753
-cont_table2 = [count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .<= 0]); 
-              count(sens -> sens >= confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .> 0]) count(sens -> sens < confidence_cutoff, indiv_df.pTriplo[indiv_df.TEDistance .> 0])]
-
-sens_greater2 = (cont_table2[1, 1]/cont_table2[2,1]) > (cont_table2[1, 2]/cont_table2[2, 2])
-p2 = pvalue(FisherExactTest(cont_table2[1, 1], cont_table2[1, 2], cont_table2[2, 1], cont_table2[2, 2]))
+out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_dist_human.csv")
+CSV.write(out_path, test_results)

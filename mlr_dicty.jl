@@ -243,7 +243,6 @@ heatmap_fig = plot(heatmap_trace, heatmap_layout)
 display(heatmap_fig)
 savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle).html"))
 
-
 mlr_model = lm(
     @formula(
         dS ~

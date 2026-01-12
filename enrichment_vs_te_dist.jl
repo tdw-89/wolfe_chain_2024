@@ -4,6 +4,31 @@ using .EnrichmentUtils
 using .RepeatUtils
 using CategoricalArrays
 
+# Collect test results for summary table at end
+test_results = DataFrame(
+    Test=String[],
+    PValue=Float64[],
+    TestStatistic=Float64[],
+    StatisticSymbol=String[],
+    Description=String[]
+)
+
+function get_statistic(test)
+    if hasproperty(test, :U)
+        return (Float64(getproperty(test, :U)), "U")
+    elseif hasproperty(test, :ω)
+        return (Float64(getproperty(test, :ω)), "ω")  # odds ratio parameter
+    else
+        error("Unsupported test type for statistic extraction: $(typeof(test))")
+    end
+end
+
+function record_test!(results::DataFrame, label::AbstractString, test, description::AbstractString)
+    stat_val, stat_sym = get_statistic(test)
+    push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, String(description)))
+    return test
+end
+
 # Duplicate filtering parameter:
 id_method = "dS" #
 id_threshold = 3
@@ -97,21 +122,34 @@ cont_table = [count(d -> d <= 10_000, te_distances) count(d -> d <= 10_000, te_d
               count(d -> d > 10_000, te_distances) count(d -> d > 10_000, te_distances_dups)]
 
 # Are the means of the two distributions significantly different? (A: No)
-pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
-pvalue(MannWhitneyUTest(te_distances, te_distances_dups))
+record_test!(test_results,
+    "FisherExactTest (≤10kb vs >10kb; non-paralog vs paralog)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the proportion of genes within 10kb of a TE differs between non-paralog and paralog genes.")
+
+record_test!(test_results,
+    "MannWhitneyUTest (TE distance; non-paralog vs paralog)",
+    MannWhitneyUTest(te_distances, te_distances_dups),
+    "Mann–Whitney U test: compares TE-distance distributions between non-paralog and paralog genes; U is the rank-sum-based test statistic.")
 
 # What is the distribution of TE distances among paralogs?
 te_distances_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∈ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∉ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 
 plot([box_plt_blue(log.(te_distances_k9me3), "With H3K9me3"), box_plt_red(log.(te_distances), "Without H3K9me3")], box_layout)
-pvalue(MannWhitneyUTest(log.(te_distances_k9me3), log.(te_distances_no_k9me3)))
+record_test!(test_results,
+    "MannWhitneyUTest (log TE distance; non-paralogs with vs without H3K9me3)",
+    MannWhitneyUTest(log.(te_distances_k9me3), log.(te_distances_no_k9me3)),
+    "Mann–Whitney U test on log-transformed TE distances: compares non-paralog genes with H3K9me3 vs without.")
 
 te_distances_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∈ ids_with_k9me3 && id ∈ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> !(id ∈ ids_with_k9me3) && id ∈ paralog_ids, te_dist_df.GeneID)]
 
 plot([box_plt_blue(log.(te_distances_k9me3_dups), "With H3K9me3 (Paralogs)"), box_plt_red(log.(te_distances_dups), "Without H3K9me3 (Paralogs)")], box_layout)
-pvalue(MannWhitneyUTest(log.(te_distances_k9me3_dups), log.(te_distances_no_k9me3_dups)))
+record_test!(test_results,
+    "MannWhitneyUTest (log TE distance; paralogs with vs without H3K9me3)",
+    MannWhitneyUTest(log.(te_distances_k9me3_dups), log.(te_distances_no_k9me3_dups)),
+    "Mann–Whitney U test on log-transformed TE distances: compares paralogs with H3K9me3 vs without.")
 
 # Are the distributions of TE distances significantly different between paralogs with and without H3K9me3?
 plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"], 
@@ -121,7 +159,10 @@ plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"],
 cont_table = [count(d -> d <= 10_000, te_distances_k9me3_dups) count(d -> d <= 10_000, te_distances_no_k9me3_dups); 
               count(d -> d > 10_000, te_distances_k9me3_dups) count(d -> d > 10_000, te_distances_no_k9me3_dups)]
 
-pvalue(FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]))
+record_test!(test_results,
+    "FisherExactTest (≤10kb vs >10kb; paralogs with vs without H3K9me3)",
+    FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),
+    "Fisher's exact test on a 2×2 table: tests whether the proportion of paralogs within 10kb of a TE differs between those with H3K9me3 vs without.")
 
 # Low dS paralogs
 te_distances_low_ds = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∈ paralog_ids_low_ds, te_dist_df.GeneID)]
@@ -129,3 +170,9 @@ te_distances_low_ds_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& 
 te_distances_low_ds_no_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∈ paralog_ids_low_ds && id ∉ ids_with_k9me3, te_dist_df.GeneID)]
 
 plot([box_plt_blue(log.(te_distances_low_ds_k9me3), "With H3K9me3"), box_plt_red(log.(te_distances_low_ds_no_k9me3), "Without H3K9me3")], box_layout)
+
+# --- Summary table of hypothesis tests ---
+display(test_results)
+
+out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_dist.csv")
+CSV.write(out_path, test_results)

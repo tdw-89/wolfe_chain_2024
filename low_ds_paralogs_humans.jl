@@ -5,9 +5,8 @@ using Serialization
 
 LOW_DS_QUANT_NUM_CUTOFF = 4
 
-include("./custom_lib/load_gff.jl")
-include("./custom_lib/enrichment_utils.jl")
-include("./custom_lib/misc_utils.jl")
+using .EnrichmentUtils
+using .MiscUtils
 
 human_gff = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/Homo_sapiens.GRCh38.99.gff3"
 human_paralog_info = "../../dicty_data/filtered/human_paralog_info_filt.csv"

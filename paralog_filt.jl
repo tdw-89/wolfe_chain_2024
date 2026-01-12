@@ -1,7 +1,7 @@
 include("prelude.jl")
 
 # Custom lib src:
-include("./custom_lib/paralog_utils.jl")
+using .ParalogUtils
 
 # Filtering parameters
 filter_not_expressed = true
@@ -58,22 +58,6 @@ unique!(paralog_data)
 filter!(row -> row[3] >= 30 && row[4] >= 30, paralog_data)
 
 # Get RBH pairs
-
-# # OLD METHOD:
-# input_df = copy(paralog_data)
-# rbh_df = rbh(input_df, scoring="mean")
-# rbh_ids = vcat(rbh_df.GeneID, rbh_df.ParalogID)
-# filter!(row -> row.GeneID ∉ rbh_ids && row.ParalogID ∉ rbh_ids, input_df)
-
-# while nrow(input_df) > 0 #?
-#     append!(rbh_df, rbh(input_df, scoring="mean"))
-#     rbh_ids = vcat(rbh_df.GeneID, rbh_df.ParalogID)
-#     filter!(row -> row.GeneID ∉ rbh_ids && row.ParalogID ∉ rbh_ids, input_df)
-    
-# end
-# rbh_id_pairs = collect(zip(rbh_df.GeneID, rbh_df.ParalogID))
-# filter!(row -> (row.GeneID, row.ParalogID) in rbh_id_pairs, paralog_data) #
-
 # Only use one round of 'rbh', otherwise you will include paralogs that have more recent duplicates,
 # but are nonetheless paired with a more diverged duplicate (giving the false impression that their paired/averaged data
 # represents the state of more diverged pairs that haven't experienced any duplication since their divergence)
@@ -126,41 +110,3 @@ else
 end
 
 CSV.write("../../dicty_data/filtered/singleton_filt.tsv", DataFrame(:GeneID => singleton_ids), delim='\t', header=true)
-
-#=
-OLD_METHOD:
-
-    # original filtering parameters:
-    ds_threshold = 2.5
-    filter_tes = true
-    filter_ncRNAs = true
-    filter_all_nc = true
-    filter_plasmids = true
-    filter_pseudogenes = true
-    filter_ax4_dup_region = true
-    filter_mito = true
-    filter_not_expressed = false
-
-    select!(paralog_data, [1,15,5,6,4])
-    rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt","PercIDtq","dS"])
-    filter!(row -> !ismissing(row.ParalogID), paralog_data)
-    unique!(paralog_data)
-    filter!(row -> !ismissing(row.dS), paralog_data)
-    filter!(row -> row.dS <= ds_threshold, paralog_data)
-
-    rbh_df = rbh(paralog_data, scoring="mean")
-    filter!(row -> row.mean_perc >= 30, rbh_df)
-    rbh_id_pairs = collect(zip(rbh_df.GeneID, rbh_df.ParalogID))
-    filter!(row -> (row.GeneID, row.ParalogID) in rbh_id_pairs, paralog_data)
-
-NEWOLD_METHOD:
-
-    paralog_data = CSV.read("../../dicty_data/wang_et_al/paralogs/Dicty.GeneParalogPairs.v51.csv", DataFrame)
-    filter!(row -> row.avg_pct_id >= 30, paralog_data)
-    filter!(row -> row.ddiscoideum_eg_paralog_orthology_type != "gene_split", paralog_data)
-    select!(paralog_data, [2,4,10,11,13])
-    rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt","PercIDtq","dS"])
-    paralog_data.dS = parse.(Float64, paralog_data.dS)
-    unique!(paralog_data)
-    filter!(row -> row.dS <= 5, paralog_data)
-=#

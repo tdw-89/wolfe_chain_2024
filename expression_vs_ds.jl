@@ -5,7 +5,6 @@ using NaturalSort
 using RollingFunctions
 using JSON
 
-
 using .EnrichmentUtils
 using .MiscUtils
 

@@ -3,9 +3,8 @@ include("prelude.jl")
 using FastaIO
 
 # custom lib:
-include("custom_lib/load_gff.jl")
-include("custom_lib/te_utils.jl")
-include("custom_lib/misc_utils.jl")
+using .RepeatUtils
+using .MiscUtils
 
 # Functions:
 
