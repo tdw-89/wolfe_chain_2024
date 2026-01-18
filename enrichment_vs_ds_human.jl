@@ -57,64 +57,80 @@ filter!(row -> row.dS <= 3, paralog_data)
 CSV.write("../../dicty_data/paralog_data_human.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
+# Get the global signal distribution for H3K9me3 from TSS-500:TSS+500 for all coding genes
+z_min = -1
+z_max = 2
 
-# Get the global mean enrichment for H3K9me3 from TSS-500:TSS+500 for all coding genes
-global_mean = mean([
-    mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), i))
-    for i in eachindex(human_ref.genes[2][1].samples)])
-    for gene in human_ref.genes[2]
-    if gene.id in cds_df[!,1] && gene.id ∉ nmd_df[!,1]
-])
+gene_range = GeneRange(TSS(), TES(), -500, 500)
+sample_inds = collect(eachindex(human_ref.genes[2][1].samples))
+
+filtered_coding_genes = [
+    gene for gene in human_ref.genes[2]
+    if gene.id in cds_df[!, 1] && gene.id ∉ nmd_df[!, 1]
+]
+
+get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
+get_global_mean(gene_list, gene_range, sample_inds) = mean([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
+get_global_std_dev(gene_list, gene_range, sample_inds) = std([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
+
+global_dist = EnrichmentUtils.SignalDistribution(
+    get_global_mean(filtered_coding_genes, gene_range, sample_inds),
+    get_global_std_dev(filtered_coding_genes, gene_range, sample_inds)
+)
 
 # Plot the enrichment
 tss_enrich = plot_enrich_region(paralog_data,
                                 human_ref.genes[2],
-                                [collect(eachindex(human_ref.genes[2][1].samples))],
+                                [sample_inds],
                                 [GeneRange(TSS(), TSS(), -500, -1)],
-                                fold_change_over_mean=true,
-                                global_means=[global_mean],
-                                z_min=0,
-                                z_max=4,
+                                fold_change_over_mean=false,
+                                global_means=[global_dist],
+                                z_min=z_min,
+                                z_max=z_max,
                                 return_figs=true)
 
 serialize("../../dicty_data/julia_serialized/human_tss_enrich_plots_dS.jls", tss_enrich)
 
 body_enrich = plot_enrich_percent(paralog_data,
                     human_ref.genes[2],
-                    [collect(eachindex(human_ref.genes[2][1].samples))],
-                    fold_change_over_mean=true,
-                    global_means=[global_mean],
-                    z_min=0,
-                    z_max=4,
+                    [sample_inds],
+                    fold_change_over_mean=false,
+                    global_means=[global_dist],
+                    z_min=z_min,
+                    z_max=z_max,
                     return_figs=true)
 serialize("../../dicty_data/julia_serialized/human_body_enrich_plots_dS.jls", body_enrich)
 
 tes_enrich = plot_enrich_region(paralog_data,
                                 human_ref.genes[2],
-                                [collect(eachindex(human_ref.genes[2][1].samples))],
+                                [sample_inds],
                                 [GeneRange(TES(), TES(), 1, 500)],
-                                fold_change_over_mean=true,
-                                global_means=[global_mean],
-                                z_min=0,
-                                z_max=4,
+                                fold_change_over_mean=false,
+                                global_means=[global_dist],
+                                z_min=z_min,
+                                z_max=z_max,
                                 return_figs=true)
 serialize("../../dicty_data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
 
-bar_plots, kw_test, means_vecs = plot_bar(paralog_data,
-                    human_ref.genes[2],
-                    [collect(eachindex(human_ref.genes[2][1].samples))],
-                    [GeneRange(TSS(), TES(), -500, 500)],
-                    [global_mean],
-                    [0,4],
-                    true,
-                    false);
+bar_plots, kw_test, means_vecs = plot_bar(
+    paralog_data,
+    human_ref.genes[2],
+    [sample_inds],
+    [GeneRange(TSS(), TES(), -500, 500)],
+    [global_dist],
+    [z_min, z_max],
+    fold_change_over_mean=false, 
+    return_figs=true,
+    horizontal=false)
+
+eta_sq_vals = η².(kw_test)
 
 p_vals_perm_cor = get_cor(
     paralog_data,
     GeneRange(TSS(),TES(), -500, 500),
     [1:16...],
     human_ref,
-    global_mean
+    global_dist.mean
     )
 
 serialize("../../dicty_data/julia_serialized/human_bar_plots_dS.jls", bar_plots)

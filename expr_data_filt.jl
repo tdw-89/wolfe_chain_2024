@@ -2,8 +2,7 @@
 include("prelude.jl")
 
 # Filtering parameters
-filter_zeros = true
-keep_tes = false
+keep_tes = true
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
@@ -52,11 +51,7 @@ end
 # Filter
 filter!(row -> row.GeneID ∉ blacklist, expr_data_combined)
 filter!(row -> row.GeneID in cds_ids, expr_data_combined)
-
-if filter_zeros
-    filter!(row -> sum(row[2:end]) > 0, expr_data_combined)
-
-end
+filter!(row -> sum(row[2:end]) > 0, expr_data_combined) # Remove genes with zero expression across all samples
 
 # Average replicates:
 rep_pairs = [(i, i + 1) for i in 2:2:ncol(expr_data_combined)]

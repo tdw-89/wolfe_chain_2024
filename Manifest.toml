@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.3"
+julia_version = "1.12.4"
 manifest_format = "2.0"
 project_hash = "dac8bc499024924e773af7d5e562ff54355147a1"
 
@@ -170,7 +170,7 @@ version = "5.2.0"
 
 [[deps.BioinfoTools]]
 deps = ["BED", "BioSequences", "CSV", "CategoricalArrays", "CodecZlib", "Combinatorics", "DataFrames", "EzXML", "GFF3", "GenomicFeatures", "Graphs", "HypothesisTests", "InteractiveUtils", "Interpolations", "Logging", "MetaGraphs", "MultipleTesting", "NaturalSort", "Pipe", "PlotlyJS", "Printf", "Random", "Statistics", "StatsBase", "XAM", "YeoJohnsonTrans"]
-git-tree-sha1 = "51c182dd5b6546c37fdc93f12893f5f07ed06939"
+git-tree-sha1 = "931e83a7d44fd4db153428e493c5493334dc8430"
 repo-rev = "main"
 repo-url = "https://github.com/tdw-89/BioinfoTools.git"
 uuid = "00eaa582-b862-4e15-ad52-40bcea7257db"
@@ -861,7 +861,7 @@ version = "1.11.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.5.20"
+version = "2025.11.4"
 
 [[deps.MultipleTesting]]
 deps = ["Distributions", "SpecialFunctions", "StatsBase"]

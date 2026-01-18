@@ -8,42 +8,6 @@ using JSON
 using .EnrichmentUtils
 using .MiscUtils
 
-function avg_enrich(pair, inds, gene_range)
-    range_1 = deepcopy(gene_range)
-    range_2 = deepcopy(gene_range)
-    avgs = []
-
-    for ind in inds
-        got_sig_1 = false
-        got_sig_2 = false
-        sig_1 = nothing
-        sig_2 = nothing
-
-        while !got_sig_1
-            
-            sig_1 = getsiginrange(pair[1], range_1, ind)
-            if ismissing(sig_1)
-                range_1 = GeneRange(TSS(), TES(), 0, 0)
-            else
-                got_sig_1 = true
-            end
-        end
-
-        while !got_sig_2
-            sig_2 = getsiginrange(pair[2], range_2, ind)
-            if ismissing(sig_2)
-                range_2 = GeneRange(TSS(), TES(), 0, 0)
-            else
-                got_sig_2 = true
-            end
-        end
-        ind_avg = mean([mean(sig_1), mean(sig_2)])
-        push!(avgs, ind_avg)
-    end
-
-    return mean(avgs)
-end
-
 function adjust_expr(gene::Gene, ratio_df::DataFrame, id_col::Int64)
     ratio = only(ratio_df.InputRatio[ratio_df[:,id_col] .== gene.id])
     return log2((only(only(gene.rnas).expression) / ratio) + 0.5)
@@ -115,11 +79,6 @@ paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 # Singleton list
 singleton_list_file = "../../dicty_data/filtered/singleton_filt.tsv"
 # final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
-
-# # Load final filtered gene list
-# final_gene_list = open(final_gene_list) do file
-#     readlines(file)
-# end
 
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)
@@ -193,22 +152,17 @@ open("../../dicty_data/julia_serialized/expression_deciles.json", "w") do file
 end
 
 kw_test = KruskalWallisTest(expression_deciles...)
-mwu_tests = [MannWhitneyUTest(expression_decile, singleton_expr_vals) for expression_decile in expression_deciles]
-adj_pvals = adjust(pvalue.(mwu_tests), BenjaminiHochberg())
 
 # Get the significance of the overall difference
-dup_vs_single = pvalue(MannWhitneyUTest(singleton_expr_vals, 
-                                        paralog_data.AvgExpr))
+dup_vs_single_test = MannWhitneyUTest(singleton_expr_vals, paralog_data.AvgExpr)
+dup_vs_single = pvalue()
 
-# Get correlation between pair-average expression and dS
-expr_ds_corr = cor(paralog_data.AvgExpr, paralog_data[!,3]), pvalue(CorrelationTest(paralog_data.AvgExpr, paralog_data[!,3]))
-
-display(plot([box_plt(paralog_data.AvgExpr[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], 
-                merge(Layout(title="Expression vs. 𝑑𝑆"), box_layout_expr)))
+# Plot expression vs dS
+display(plot([box_plt(paralog_data.AvgExpr[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], merge(Layout(title="Expression vs. 𝑑𝑆"), box_layout_expr)))
 display(plot(scatter(x=rollmean(paralog_data[:,"dS"], 100), y=rollmean(paralog_data.AvgExpr, 100), mode="markers", text=paralog_data.GeneID, marker_size=5), Layout(xaxis=attr(title="dS"), yaxis=attr(title="log2(expression)", range=[0, 4]))))
 
-display(plot([box_plt(paralog_data.Diff[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], 
-                merge(Layout(title="Expression Difference"), box_layout_diff)))
+# Plot expression difference vs dS
+display(plot([box_plt(paralog_data.Diff[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], merge(Layout(title="Expression Difference"), box_layout_diff)))
 display(plot(scatter(x=rollmean(paralog_data[:,"dS"], 100), y=rollmean(paralog_data.Diff, 100), mode="markers", text=paralog_data.GeneID, marker_size=5), Layout(xaxis=attr(title="dS"), yaxis=attr(title="Expression difference"))))
 
 df_adj = findall(row -> row.AvgExprAdj != Inf, eachrow(paralog_data))

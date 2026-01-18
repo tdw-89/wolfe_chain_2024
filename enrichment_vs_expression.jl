@@ -77,16 +77,30 @@ k4me3_inds = [2, 5, 8]
 k9me3_inds = [3, 6, 9]
 atac_inds = [10, 11, 12]
 sample_inds_vec = [k27ac_inds, k4me3_inds, k9me3_inds, atac_inds]
-global_means_vec = [mean([mean([mean(getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
+
+z_min = -1
+z_max = 2
+
+# Global signal distributions (mean/std-dev) for each sample group across all filtered genes
+get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
+get_global_mean(gene_list, gene_range, sample_inds) = mean([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
+get_global_std_dev(gene_list, gene_range, sample_inds) = std([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
+get_sig_dist(gene_list, gene_range, sample_inds) =
+    EnrichmentUtils.SignalDistribution(
+        get_global_mean(gene_list, gene_range, sample_inds),
+        get_global_std_dev(gene_list, gene_range, sample_inds)
+    )
+
+global_means_vec = [get_sig_dist(filtered_gene_list, universal_range, sample_inds) for sample_inds in sample_inds_vec]
 
 tss_enrich = plot_enrich_expr_region(expr_data, 
     filtered_gene_list, 
     sample_inds_vec, 
     [GeneRange(TSS(), TSS(), -500, 0) for i in 1:5], 
-    fold_change_over_mean=true, 
+    fold_change_over_mean=false, 
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true)
 
 serialize(joinpath(ser_data_dir, "tss_enrich_plots_expr.jls"), tss_enrich)
@@ -94,10 +108,10 @@ serialize(joinpath(ser_data_dir, "tss_enrich_plots_expr.jls"), tss_enrich)
 body_enrich = plot_enrich_expr_percent(expr_data, 
     filtered_gene_list, 
     sample_inds_vec, 
-    fold_change_over_mean=true, 
+    fold_change_over_mean=false, 
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true)
 
 serialize(joinpath(ser_data_dir, "body_enrich_plots_expr.jls"), body_enrich)
@@ -106,10 +120,10 @@ tes_enrich = plot_enrich_expr_region(expr_data,
     filtered_gene_list,
     sample_inds_vec,
     [GeneRange(TES(), TES(), 0, 500) for i in 1:5],
-    fold_change_over_mean=true,
+    fold_change_over_mean=false,
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true)
 
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
@@ -120,10 +134,12 @@ bar_plots, kw_tests, means_vecs = plot_bar_expr(
     sample_inds_vec, 
     [universal_range, universal_range, universal_range, universal_range],
     global_means_vec, 
-    [0,4], 
-    true, 
-    false
-    );
+    [z_min, z_max];
+    fold_change_over_mean=false,
+    return_figs=true,
+    horizontal=false
+    )
+eta_sq_vals = η².(kw_tests)
 p_vals_perm_cor = [
     get_cor_expr(
         expr_data,

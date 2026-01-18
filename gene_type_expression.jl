@@ -58,4 +58,5 @@ savefig(fig, joinpath(plot_save_dir, "gene_type_expression.html"))
 
 non_te_expression = [mean(gene.rnas[1].expression) for gene in non_te_gene_list if length(gene.rnas) > 0]
 te_expression = [mean(gene.rnas[1].expression) for gene in te_genes_list if length(gene.rnas) > 0]
-MannWhitneyUTest(non_te_expression, te_expression)
+test_res = MannWhitneyUTest(non_te_expression, te_expression)
+p_val = pvalue(test_res)

@@ -11,9 +11,9 @@ nmd_id_file = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/nmd_candid
 paralog_data = CSV.read(human_paralog_info, DataFrame)
 cds_df = CSV.read(cds_id_file, DataFrame, header=false)
 nmd_df = CSV.read(nmd_id_file, DataFrame, header=false)
-select!(paralog_data, [1,11,7,8,5,6])
+select!(paralog_data, [1,11,7,8,5,6,9])
 unique!(paralog_data)
-rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt", "PercIDtq", "dS","dN"])
+rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt", "PercIDtq", "dS","dN", "ParalogyType"])
 
 # Identify the singletons
 singletons = unique(select(filter(row -> ismissing(row.ParalogID), paralog_data), :GeneID))
@@ -21,7 +21,7 @@ filter!(row -> row.GeneID ∈ cds_df[!,1] && row.GeneID ∉ nmd_df[!,1], singlet
 CSV.write("../../dicty_data/filtered/human_singletons_filt.csv", singletons)
 
 # Filter the paralog data
-filter!(row -> !ismissing(row[3]) && !ismissing(row[4]) && !ismissing(row.dS), paralog_data) # Filter to those with %ID info
+filter!(row -> !ismissing(row[3]) && !ismissing(row[4]) && !ismissing(row.dS), paralog_data) # Filter to those with %ID and dS info
 filter!(row -> min(row[3],row[4]) >= 30, paralog_data) # Filter to those with %ID >= 30
 filter!(row -> row.GeneID ∈ cds_df[!,1] && row.ParalogID ∈ cds_df[!,1], paralog_data) # Filter to those that are in the coding sequence file
 filter!(row -> row.GeneID ∉ nmd_df[!,1] && row.ParalogID ∉ nmd_df[!,1], paralog_data) # Filter to those that are not in the NMD candidate file

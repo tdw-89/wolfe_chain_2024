@@ -32,11 +32,15 @@ dup_list <- vec_list_expr[-1]
 dup_list <- dup_list[order(as.integer(names(dup_list)))]
 dup_list |> kruskal.test() -> dup_test
 dup_list |> dunns_test() -> dup.dunn.test
-write.csv(as.data.frame(dup.dunn.test$test.result), "../../dicty_data/expr_dunns_test.csv")
+res_df_dup <- as.data.frame(dup.dunn.test$test.result)
+res_df_dup$comparisons <- paste("'", res_df_dup$comparisons, sep="")
+write.csv(res_df_dup, "../../dicty_data/expr_dunns_test.csv")
 
 # Enrich vs. dS human:
 vec_list_human <- jsonlite::fromJSON(means_vecs_human_file)
 names(vec_list_human$K9me3) <- as.character(1:10)
 vec_list_human$K9me3 |> dunns_test() ->  human.dunn.test
 medians <- lapply(vec_list_human$K9me3, median)
-write.csv(as.data.frame(human.dunn.test$test.result), "../../dicty_data/h3k9me3_dunns_test_humans.csv")
+res_df_human <- as.data.frame(human.dunn.test$test.result)
+res_df_human$comparisons <- paste("'", res_df_human$comparisons, sep="")
+write.csv(res_df_human, "../../dicty_data/h3k9me3_dunns_test_humans.csv")

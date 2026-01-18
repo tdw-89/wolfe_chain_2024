@@ -246,7 +246,7 @@ CSV.write("../../dicty_data/human_h3k9me3_exon_enrichment$(GENE_TYPE in ["single
 # Calculate the weighted mean
 total_bases = sum(exon_df_merged.Length)
 total_signal_sum = sum(exon_df_merged.OverlapPerc .* exon_df_merged.Length)
-weighted_mean = (total_signal_sum / total_bases) * 100
+perc_bases = (total_signal_sum / total_bases) * 100
 
 # Comparison of singletons to duplicates:
 if RUN_COMPARISON

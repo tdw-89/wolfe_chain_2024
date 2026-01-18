@@ -1,12 +1,58 @@
 include("prelude.jl")
 
 using Serialization
+using PlotlyJS
+
+"""Disable colorbars for all heatmap traces in a PlotlyJS figure.
+
+Works with both `Plot` objects and displayed `SyncPlot` wrappers.
+"""
+function remove_heatmap_colorbars!(fig)
+    # PlotlyJS sometimes wraps plots in `SyncPlot` for display; the underlying plot is in `.plot`.
+    plt = hasproperty(fig, :plot) ? getproperty(fig, :plot) : fig
+
+    # Hide per-trace colorbars.
+    if hasproperty(plt, :data)
+        for tr in plt.data
+            ty = try
+                tr[:type]
+            catch
+                nothing
+            end
+            if ty == "heatmap"
+                tr[:showscale] = false
+            end
+        end
+    end
+
+    # Hide shared coloraxis colorbars too (coloraxis, coloraxis2, ...).
+    if hasproperty(plt, :layout)
+        if haskey(plt.layout, :coloraxis)
+            plt.layout[:coloraxis][:showscale] = false
+        end
+        try
+            for k in keys(plt.layout)
+                if startswith(String(k), "coloraxis")
+                    ca = plt.layout[k]
+                    try
+                        ca[:showscale] = false
+                    catch
+                    end
+                end
+            end
+        catch
+        end
+    end
+
+    return fig
+end
 
 save_plots = true
 box_plots = true
 x_tick_font = attr(family="Times New Roman", size=26)
-y_tick_font = attr(family="Times New Roman", size=26)
+y_tick_font = attr(family="Times New Roman", size=36)
 title_font_size = 30
+vertical_spacing = 0.1
 x1_vals = [collect(-400:100:-100)...]
 x2_vals = [collect(20:20:80)...]
 x3_vals = [collect(100:100:400)...]
@@ -44,7 +90,7 @@ for i in eachindex(sample_names)
         # We want: (top) heatmap, bar, heatmap, bar (bottom)
         row_heights=[0.30, 0.30, 0.30, 0.30],
         horizontal_spacing=0.002,
-        vertical_spacing=0.07,
+        vertical_spacing=vertical_spacing,
         # shared_xaxes=true,
         # shared_yaxes=true,
         specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
@@ -57,12 +103,12 @@ for i in eachindex(sample_names)
     add_trace!(fig, tss_expr_enrich[1][i], row=1, col=1)
     add_trace!(fig, body_expr_enrich[1][i], row=1, col=2)
     add_trace!(fig, tes_expr_enrich_ends[1][i], row=1, col=3)
-    add_trace!(fig, box_plots ? bar_expr[i].plot.data[1] : bar_expr[i], row=2, col=1)
-    relayout!(fig, yaxis=attr(tickfont=y_tick_font, 
-                              title="log(TPM + 0.5)", 
-                              titlefont=attr(family = "Times New Roman", 
+    add_trace!(fig, box_plots ? bar_expr[1][i] : bar_expr[i], row=2, col=1)
+    relayout!(fig, yaxis=attr(tickfont=y_tick_font,
+                              title="log(TPM + 0.5)",
+                              titlefont=attr(family = "Times New Roman",
                               size=title_font_size)),
-                xaxis=attr(range=[-500,0], 
+                xaxis=attr(range=[-500,0],
                             showticklabels=false),
                 yaxis2=attr(showticklabels=false),
                 xaxis2=attr(showticklabels=false),
@@ -71,7 +117,7 @@ for i in eachindex(sample_names)
                             showticklabels=false),
                 yaxis4=attr(showticklabels=true,
                             tickfont=y_tick_font,
-                            title="Gene category",
+                            title="",
                             titlefont=attr(family="Times New Roman", size=title_font_size),
                             showline=true,
                             linecolor="black",
@@ -89,7 +135,7 @@ for i in eachindex(sample_names)
     add_trace!(fig, tss_dS_enrich[1][i], row=3, col=1)
     add_trace!(fig, body_dS_enrich[1][i], row=3, col=2)
     add_trace!(fig, tes_dS_enrich_ends[1][i], row=3, col=3)
-    add_trace!(fig, box_plots ? bar_dS[i].plot.data[1] : bar_dS[i], row=4, col=1)
+    add_trace!(fig, box_plots ? bar_dS[1][i] : bar_dS[i], row=4, col=1)
     relayout!(fig, 
                 yaxis5=attr(tickfont=y_tick_font, 
                                title="𝑑𝑆", 
@@ -114,7 +160,7 @@ for i in eachindex(sample_names)
                             tickfont=x_tick_font),
                 yaxis8=attr(showticklabels=true,
                             tickfont=y_tick_font,
-                            title="Gene category",
+                            title="",
                             titlefont=attr(family="Times New Roman", size=title_font_size),
                             showline=true,
                             linecolor="black",
@@ -133,7 +179,7 @@ for i in eachindex(sample_names)
 
     relayout!(fig, showlegend=false,
                    plot_bgcolor="rgba(0,0,0,0)",
-                   height=1600)
+                   height=2000)
     
         relayout!(fig, shapes = reduce(vcat, 
         [
@@ -205,6 +251,8 @@ for i in eachindex(sample_names)
         for val in x3_vals]
         ]
         ))
+
+    remove_heatmap_colorbars!(fig)
     
     if save_plots
         savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS.html"))
@@ -220,7 +268,7 @@ fig_h = make_subplots(
     # NOTE: Plotly applies row_heights bottom→top.
     row_heights=[0.30, 0.30],
     horizontal_spacing=0.005,
-    vertical_spacing=0.07,
+    vertical_spacing=vertical_spacing,
         # shared_xaxes=true,
         # shared_yaxes=true,
     specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
@@ -231,7 +279,7 @@ fig_h = make_subplots(
 add_trace!(fig_h, tss_dS_enrich_human[1][1], row=1, col=1)
 add_trace!(fig_h, body_dS_enrich_human[1][1], row=1, col=2)
 add_trace!(fig_h, tes_dS_enrich_human[1][1], row=1, col=3)
-add_trace!(fig_h, box_plots ? bar_dS_human[1].plot.data[1] : bar_dS_human[1], row=2, col=1)
+add_trace!(fig_h, box_plots ? bar_dS_human[1][1] : bar_dS_human[1], row=2, col=1)
 relayout!(fig_h, yaxis=attr(tickfont=y_tick_font, 
                             title="𝑑𝑆", 
                             titlefont=attr(family = "Times New Roman", 
@@ -254,7 +302,7 @@ relayout!(fig_h, yaxis=attr(tickfont=y_tick_font,
                         tickfont=x_tick_font),
             yaxis4=attr(showticklabels=true,
                         tickfont=y_tick_font,
-                        title="Gene category",
+                        title="",
                         titlefont=attr(family="Times New Roman", size=title_font_size),
                         showline=true,
                         linecolor="black",
@@ -311,6 +359,8 @@ relayout!(fig_h, shapes = reduce(vcat,
         for val in x3_vals]
     ]
 ))
+
+remove_heatmap_colorbars!(fig_h)
 
 if save_plots
     savefig(fig_h, joinpath(plot_save_dir, "combined_plot_H3K9me3_dS_human.html"))

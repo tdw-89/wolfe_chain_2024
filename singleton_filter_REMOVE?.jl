@@ -10,7 +10,7 @@ filter_ax4_dup_region = true
 filter_mito = true
 
 # Blacklist files
-blacklist_file = "../blacklists/blacklist_all.tsv"
+blacklist_file = "./blacklists/blacklist_all.tsv"
 mito_file = "../../dicty_data/AX4/genome_ver_2_7/gff3/chromosome_M.gff"
 all_nc_file = "../../dicty_data/AX4/genome_ver_2_7/nc_genes.txt" # some overlap with IDs in 'blacklist_file', also includes 'splice transcripts'
 

@@ -3,19 +3,12 @@ include("prelude.jl")
 # Custom lib src:
 using .ParalogUtils
 
-# Filtering parameters
-filter_not_expressed = true
-ds_est = false
-for_ds_calc = false
-yn00 = false
-ng86 = false
-lwl85 = false
-
 # Paralog file
 full_paralog_file = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"
+
 # dictybase_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds_ids.txt"
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 
@@ -81,32 +74,5 @@ expr_data = CSV.read(expr_data, DataFrame)
 filter!(row -> row.GeneID in expr_data.GeneID && row.ParalogID in expr_data.GeneID, paralog_data)
 filter!(id -> id in expr_data.GeneID, singleton_ids)
 
-
-# Write filtered paralog data
-if ds_est
-
-    if for_ds_calc
-        # Write the pair IDs for the dS calculation pipeline
-        id_pairs = select(paralog_data, [1,2])
-        CSV.write("../../dicty_data/filtered/paralog_filt_id_pairs.tsv", id_pairs, delim='\t', header=false)
-
-    else
-
-        method_ind = [3,5,7][only(findall([yn00, ng86, lwl85]))]
-        ds_estimate_sets = [Set([ds_estimates[i, 1], ds_estimates[i, 2]]) for i in 1:nrow(ds_estimates)]
-
-        for i in 1:nrow(paralog_data)
-            temp_set = Set([paralog_data[i, 1], paralog_data[i, 2]])
-            ds_ind = findfirst(set -> set == temp_set, ds_estimate_sets)
-            paralog_data.dS[i] = ds_estimates[ds_ind, method_ind]
-
-        end
-
-        CSV.write("../../dicty_data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
-    end
-else
-    CSV.write("../../dicty_data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
-
-end
-
+CSV.write("../../dicty_data/filtered/paralog_filt.tsv", paralog_data, delim='\t', header=true)
 CSV.write("../../dicty_data/filtered/singleton_filt.tsv", DataFrame(:GeneID => singleton_ids), delim='\t', header=true)

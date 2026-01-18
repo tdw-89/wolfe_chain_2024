@@ -16,7 +16,7 @@ function serialize_to_json(file_path, vecs)
     end
 end
 
-gene_range = 
+gene_range =
     GeneRange(
     TSS(),
     TES(),
@@ -27,7 +27,6 @@ gene_range =
 # Peak files
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
-sig_region_file = "../../dicty_data/sig_regions.csv"
 
 # Genome data
 gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
@@ -36,7 +35,6 @@ paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 blacklist_file = "../../dicty_data/blacklist_with_tes.csv"
 final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
-singleton_file = "../../dicty_data/filtered/singleton_filt.tsv"
 
 # Save directory
 ser_data_dir = "../../dicty_data/julia_serialized/"
@@ -73,6 +71,9 @@ paralog_ids = vcat(paralog_data[:, 1], paralog_data[:, 2])
 filtered_gene_list = [gene for gene in ref_genome.genes[2] if gene.id in final_gene_list]
 filtered_paralog_list = [gene for gene in filtered_gene_list if gene.id in paralog_ids]
 
+z_min = -1
+z_max = 2
+
 # Plot enrichment vs expression
 k27ac_inds = [1, 4, 7]
 k4me3_inds = [2, 5, 8]
@@ -83,30 +84,37 @@ sample_inds_vec = [k27ac_inds,
                    k9me3_inds, 
                    atac_inds]
 # get the global mean enrichment for each sample across all filtered genes
-global_means_vec = 
-[mean([mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds]) for gene in filtered_gene_list]) for sample_inds in sample_inds_vec]
+get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
+get_global_mean(gene_list, sample_inds) = mean([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
+get_global_std_dev(gene_list, sample_inds) = std([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list]) 
+get_sig_dist(gene_list, sample_inds) = 
+    EnrichmentUtils.SignalDistribution(
+        get_global_mean(gene_list, sample_inds), 
+        get_global_std_dev(gene_list, sample_inds)
+    )
+global_means_vec = [get_sig_dist(filtered_gene_list, sample_inds) for sample_inds in sample_inds_vec]
 
 tss_enrich = plot_enrich_region(
     paralog_data, 
     filtered_paralog_list, 
     sample_inds_vec, 
     [GeneRange(TSS(), TSS(), -500, -1) for i in 1:4], 
-    fold_change_over_mean=true, 
+    fold_change_over_mean=false, 
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true
     )
 
 serialize(joinpath(ser_data_dir, "tss_enrich_plots_dS.jls"), tss_enrich)
 
-body_enrich = plot_enrich_percent(paralog_data, 
+body_enrich = plot_enrich_percent(paralog_data,
 filtered_paralog_list, 
     sample_inds_vec, 
-    fold_change_over_mean=true, 
+    fold_change_over_mean=false, 
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true)
 
 serialize(joinpath(ser_data_dir, "body_enrich_plots_dS.jls"), body_enrich)
@@ -115,24 +123,30 @@ tes_enrich = plot_enrich_region(paralog_data,
 filtered_paralog_list,
     sample_inds_vec,
     [GeneRange(TES(), TES(), 1, 500) for i in 1:4],
-    fold_change_over_mean=true,
+    fold_change_over_mean=false,
     global_means=global_means_vec,
-    z_min=0,
-    z_max=4,
+    z_min=z_min,
+    z_max=z_max,
     return_figs=true)
 
 serialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"), tes_enrich)
 
 # Plot bar plots of coverage in significant regions
-sig_region_df = CSV.read(sig_region_file, DataFrame)
 bar_plots, kw_tests, means_vecs = 
     plot_bar(
-        paralog_data, 
+        paralog_data,
         filtered_paralog_list, 
-        sample_inds_vec, 
-        [gene_range, gene_range, gene_range, gene_range], # ATAC
-            global_means_vec, [0,4], true, false);
-p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
+        sample_inds_vec,
+        [gene_range, gene_range, gene_range, gene_range],
+        global_means_vec, 
+        [z_min, z_max], 
+        fold_change_over_mean=false, 
+        return_figs=true,
+        horizontal=false,
+        box_plots=true);
+eta_sq_vals = η².(kw_tests)
+
+p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean.mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
                             [gene_range,
                              gene_range,
                              gene_range,
