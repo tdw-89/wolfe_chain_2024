@@ -6,7 +6,7 @@ using JSON
 
 using .EnrichmentUtils
 
-reload_peak_data = true
+reload_peak_data = false
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -58,9 +58,6 @@ CSV.write("../../dicty_data/paralog_data_human.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # Get the global signal distribution for H3K9me3 from TSS-500:TSS+500 for all coding genes
-z_min = -1
-z_max = 2
-
 gene_range = GeneRange(TSS(), TES(), -500, 500)
 sample_inds = collect(eachindex(human_ref.genes[2][1].samples))
 

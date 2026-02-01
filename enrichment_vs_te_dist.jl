@@ -13,18 +13,22 @@ test_results = DataFrame(
     Description=String[]
 )
 
-function get_statistic(test)
+function get_effect_size(test)
     if hasproperty(test, :U)
-        return (Float64(getproperty(test, :U)), "U")
+        U = test.U
+        Z = (U - test.mu) / test.sigma |> abs
+        N = test.ny + test.nx
+        r = Z / √N
+        return (r, "r")
     elseif hasproperty(test, :ω)
-        return (Float64(getproperty(test, :ω)), "ω")  # odds ratio parameter
+        return (Float64(getproperty(test, :ω)), "ω")  # odds ratio
     else
         error("Unsupported test type for statistic extraction: $(typeof(test))")
     end
 end
 
 function record_test!(results::DataFrame, label::AbstractString, test, description::AbstractString)
-    stat_val, stat_sym = get_statistic(test)
+    stat_val, stat_sym = get_effect_size(test)
     push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, String(description)))
     return test
 end
@@ -44,7 +48,7 @@ chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_
 paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
 te_dist_file = "../../dicty_data/te_distance.csv"
-# te_dist_file = "../../dicty_data/repeat_distance.csv"
+te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
 
 font_family = "Times New Roman"
 box_plt_blue(data, name) = box(y=data, 
@@ -75,6 +79,9 @@ ref_genome = loadgenome(gff_source, chrom_lengths_file)
 
 # Load the TE distance data:
 te_dist_df = CSV.read(te_dist_file, DataFrame)
+
+# Load TE IDs
+te_ids = CSV.read(te_id_file, DataFrame)
 
 # Load the paralog data:
 paralog_data = CSV.read(paralog_file, DataFrame)
@@ -121,7 +128,7 @@ plot([box_plt_blue(log10.(te_distances), "TE Distance"), box_plt_red(log10.(te_d
 cont_table = [count(d -> d <= 10_000, te_distances) count(d -> d <= 10_000, te_distances_dups); 
               count(d -> d > 10_000, te_distances) count(d -> d > 10_000, te_distances_dups)]
 
-# Are the means of the two distributions significantly different? (A: No)
+# Are the means of the two distributions significantly different? (A: Yes)
 record_test!(test_results,
     "FisherExactTest (≤10kb vs >10kb; non-paralog vs paralog)",
     FisherExactTest(cont_table[1, 1], cont_table[1, 2], cont_table[2, 1], cont_table[2, 2]),

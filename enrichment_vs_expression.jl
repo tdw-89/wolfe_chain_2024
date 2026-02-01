@@ -78,9 +78,6 @@ k9me3_inds = [3, 6, 9]
 atac_inds = [10, 11, 12]
 sample_inds_vec = [k27ac_inds, k4me3_inds, k9me3_inds, atac_inds]
 
-z_min = -1
-z_max = 2
-
 # Global signal distributions (mean/std-dev) for each sample group across all filtered genes
 get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
 get_global_mean(gene_list, gene_range, sample_inds) = mean([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
@@ -147,7 +144,7 @@ p_vals_perm_cor = [
         sample_ind,
         ref_genome
     ) for sample_ind in sample_inds_vec
-    ]
+]
 adj_pvals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
 adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)

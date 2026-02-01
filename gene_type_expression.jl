@@ -60,3 +60,6 @@ non_te_expression = [mean(gene.rnas[1].expression) for gene in non_te_gene_list 
 te_expression = [mean(gene.rnas[1].expression) for gene in te_genes_list if length(gene.rnas) > 0]
 test_res = MannWhitneyUTest(non_te_expression, te_expression)
 p_val = pvalue(test_res)
+Z = (test_res.U - test_res.mu) / test_res.sigma |> abs
+N = test_res.nx + test_res.ny
+r = Z / √N

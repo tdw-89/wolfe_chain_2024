@@ -223,10 +223,23 @@ inv_cor_mat = inv(cor_mat)
 vif_values = diag(inv_cor_mat)
 
 # Create a heatmap of the correlation matrix, with values annotated
+var_names = [
+    "Average Expression",
+    "H3K27ac (coverage)",
+    "H3K4me3 (coverage)",
+    "H3K9me3 (coverage)",
+    "ATAC (coverage)",
+    "Paralog Distance",
+    "H3K27ac (presence)",
+    "H3K4me3 (presence)",
+    "H3K9me3 (presence)",
+    "ATAC (presence)",
+    "Same Chromosome"
+]
 heatmap_trace = heatmap(
     z=cor_mat,
-    x=names(full_df)[4:end],
-    y=names(full_df)[4:end],
+    x=var_names,
+    y=var_names,
     colorscale="Viridis",
     zmin=-1,
     zmax=1,
@@ -234,7 +247,7 @@ heatmap_trace = heatmap(
 )
 
 heatmap_layout = Layout(
-    title="Correlation Matrix Heatmap $life_cycle",
+    title="Correlation Matrix Heatmap",
     xaxis=attr(tickangle=-45),
     yaxis=attr(autorange="reversed")
 )
@@ -259,6 +272,8 @@ mlr_model = lm(
         ParalogDist
     ), 
     full_df)
+null_model = lm(@formula(dS ~ 1), full_df)
+f_test_result = ftest(null_model.model, mlr_model.model)
 mlr_table = DataFrame(coeftable(mlr_model))
 rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
 r_squared = r²(mlr_model)

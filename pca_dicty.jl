@@ -77,7 +77,7 @@ insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
 select!(expr_data, ["GeneID", "Avg"])
 
 # log-transform data with an added pseudocount of 0.5
-expr_data.Avg = normalize_yj(expr_data.Avg)
+expr_data.Avg = log2.(expr_data.Avg .+ 0.5)
 
 # filter expression data to only include genes in the final gene list
 filter!(row -> row.GeneID in final_gene_list, expr_data)
@@ -192,8 +192,6 @@ for i in 1:nrow(full_df)
 end
 full_df.ParalogDist = paralog_dist
 full_df.SameChrom = ifelse.(isfinite.(full_df.ParalogDist), 1, 0)
-full_df.ParalogProx = 1 ./ (full_df.ParalogDist .+ 1)
-select!(full_df, Not(:ParalogDist))
 
 full_df_backup = copy(full_df) # Backup before normalization
 

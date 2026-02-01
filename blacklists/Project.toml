@@ -1,9 +1,7 @@
 [deps]
 BED = "8e4a8c10-cb6b-11e8-08d2-83478d609d67"
 BioinfoTools = "00eaa582-b862-4e15-ad52-40bcea7257db"
-Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GFF3 = "af1dc308-cb6b-11e8-32f0-31192efa90f6"
 StatsModels = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
-Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 YeoJohnsonTrans = "bde5d4e9-ba51-5a47-b2d1-b5088a182367"

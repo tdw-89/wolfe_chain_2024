@@ -13,10 +13,13 @@ blacklist_file = "./blacklists/cds_blacklist_full.tsv"
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
 
 # Load paralog data
-paralog_data = CSV.read(full_paralog_file, DataFrame, delim='\t')
+paralog_data = CSV.read(
+    full_paralog_file, 
+    DataFrame, 
+    delim='\t'
+    )
 singleton_data = filter(row -> ismissing(row[15]), paralog_data)
 singleton_ids = unique(singleton_data[!, 1])
-ds_estimates = CSV.read("../../dicty_data/filtered/dS_df.csv", DataFrame)
 
 # Save the unfiltered singleton list
 CSV.write("../../dicty_data/singleton_list_unfilt.txt", DataFrame(GeneID = singleton_data[!,1]))

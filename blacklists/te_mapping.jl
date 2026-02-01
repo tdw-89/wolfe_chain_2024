@@ -46,7 +46,7 @@ for (desc, seq) in db_reader
     end
 end
 
-db_te_df = DataFrame(GeneID = String[], Chrom = String[], Start = Int[], End = Int[], Length = Int[], Sequence = String[])
+db_te_df = DataFrame(GeneID = String[], Chrom = String[], Start = Int[], End = Int[], Length = Int[], Sequence = String[], ClassI = Bool[])
 for (i, desc) in enumerate(descs)
     desc_split = split(desc, "|")
     id = strip(desc_split[2])
@@ -57,7 +57,7 @@ for (i, desc) in enumerate(descs)
     end_pos = parse(Int, split(pos)[4])
     seq_length = end_pos - start_pos + 1
     seq = seqs[i]
-    push!(db_te_df, [id, chrom, start_pos, end_pos, seq_length, seq])
+    push!(db_te_df, [id, chrom, start_pos, end_pos, seq_length, seq, contains(desc, r"_RTE")])
 end
 
 # Get all Ensembl CDS sequences:
@@ -89,6 +89,7 @@ end
 
 # Get all Ensembl genes annotated as TEs by dictybase:
 ensembl_te_df = filter(row -> row.GeneID in db_te_df.GeneID, ensembl_cds_df)
+insertcols!(ensembl_te_df, :ClassI => map(gene_id -> db_te_df.ClassI[findfirst(==(gene_id), db_te_df.GeneID)], ensembl_te_df.GeneID))
 
 # Which TE IDs are missing from the ensembl data?
 missing_tes = filter(row -> row.GeneID in setdiff(db_te_df.GeneID, ensembl_te_df.GeneID), db_te_df)
@@ -185,7 +186,26 @@ te_ids_ensembl_full = vcat(
     overlapping_genes
 )
 
-CSV.write("ensembl_te_ids_full.tsv", DataFrame(GeneID=te_ids_ensembl_full))
+is_class_I = gene_id -> begin
+    if gene_id in same_chrom_same_coord.GeneID
+        return same_chrom_same_coord.ClassI[findfirst(==(gene_id), same_chrom_same_coord.GeneID)]
+    elseif gene_id in same_chrom_diff_coord.GeneID
+        return same_chrom_diff_coord.ClassI[findfirst(==(gene_id), same_chrom_diff_coord.GeneID)]
+    elseif gene_id in filter(row -> row.Chrom ∉ ["$i" for i in 1:6] && row.Chrom_1 ∉ ["$i" for i in 1:6], same_seq_diff_chrom).GeneID
+        return filter(row -> row.Chrom ∉ ["$i" for i in 1:6] && row.Chrom_1 ∉ ["$i" for i in 1:6], same_seq_diff_chrom).ClassI[findfirst(==(gene_id), filter(row -> row.Chrom ∉ ["$i" for i in 1:6] && row.Chrom_1 ∉ ["$i" for i in 1:6], same_seq_diff_chrom).GeneID)]
+    elseif gene_id in overlapping_genes
+        return true # All overlapping genes are class I TEs
+    else
+        return false
+    end
+end
+
+full_df = DataFrame(
+    GeneID=te_ids_ensembl_full, 
+    ClassI=map(is_class_I, te_ids_ensembl_full)
+)
+
+CSV.write("ensembl_te_ids_full.tsv", full_df, delim = '\t')
 
 ####################
 # PARALOG OVERLAP: #

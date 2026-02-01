@@ -71,9 +71,6 @@ paralog_ids = vcat(paralog_data[:, 1], paralog_data[:, 2])
 filtered_gene_list = [gene for gene in ref_genome.genes[2] if gene.id in final_gene_list]
 filtered_paralog_list = [gene for gene in filtered_gene_list if gene.id in paralog_ids]
 
-z_min = -1
-z_max = 2
-
 # Plot enrichment vs expression
 k27ac_inds = [1, 4, 7]
 k4me3_inds = [2, 5, 8]
@@ -96,10 +93,10 @@ global_means_vec = [get_sig_dist(filtered_gene_list, sample_inds) for sample_ind
 
 tss_enrich = plot_enrich_region(
     paralog_data, 
-    filtered_paralog_list, 
-    sample_inds_vec, 
-    [GeneRange(TSS(), TSS(), -500, -1) for i in 1:4], 
-    fold_change_over_mean=false, 
+    filtered_paralog_list,
+    sample_inds_vec,
+    [GeneRange(TSS(), TSS(), -500, -1) for i in 1:4],
+    fold_change_over_mean=false,
     global_means=global_means_vec,
     z_min=z_min,
     z_max=z_max,

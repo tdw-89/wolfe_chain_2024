@@ -57,6 +57,23 @@ if only_specific_type
     end
 end
 
+# Calculate total TE coverage statistics
+if specific_type == "TE"
+    dna_te_df = filter(row -> row.Type == "DNA", te_df)
+    rte_te_df = filter(row -> row.Type != "DNA", te_df)
+    dna_bases = sum(dna_te_df.End .- dna_te_df.Start .+ 1)
+    rte_bases = sum(rte_te_df.End .- rte_te_df.Start .+ 1)
+    total_te_bases = sum(te_df.End .- te_df.Start .+ 1)
+    total_genome_bases = sum(values(human_ref.scaffolds) .|> s -> s.scaffold_end - s.scaffold_start + 1)
+    
+    dna_te_perc = dna_bases / total_genome_bases * 100.0
+    rte_te_perc = rte_bases / total_genome_bases * 100.0
+    total_te_perc = total_te_bases / total_genome_bases * 100.0
+    println("DNA TE coverage: $dna_bases / $total_genome_bases * 100 = $dna_te_perc")
+    println("Retrotransposon TE coverage: $rte_bases / $total_genome_bases * 100 = $rte_te_perc")
+    println("Total TE coverage: $total_te_bases / $total_genome_bases * 100 = $total_te_perc")
+end
+
 # Filter to only include the main chromosomes
 main_chroms = [["$i" for i in 1:22]..., "X", "Y"]
 if only_numbered_chroms
