@@ -9,6 +9,8 @@ using LinearAlgebra
 using MultivariateStats
 using NaturalSort
 
+const ϵ = 0.001
+
 # Helper functions
 function get_avg_signal(gene::Gene, idx::Int64)
     sig = getsiginrange(gene, GeneRange(TSS(), TES(), -500, 500), idx)
@@ -28,10 +30,20 @@ function distance(geneA::Gene, geneB::Gene)
     end
 end
 
+function logit(vec::Vector{Float64})
+    vec = clamp.(vec, ϵ, 1 - ϵ)
+    return log.(vec ./ (1 .- vec))
+end
+
+function logit_z(vec::Vector{Float64})
+    log_odd_vec = logit(vec)
+    return zscore(log_odd_vec)
+end
+
+
 data_dir = "../../dicty_data/"
 life_cycle = "All" # "F" "M" "V" or "All"
 PCA_analysis = true
-fc = false  # whether to use fold change over mean normalization for enrichment values
 
 k27ac_upstream, k4me3_upstream, k9me3_upstream, atac_upstream = -500, -500, -500, -500
 k27ac_downstream, k4me3_downstream, k9me3_downstream, atac_downstream = 500, 500, 500, 500
@@ -61,7 +73,7 @@ end
 # Load expression data
 expr_data = CSV.read(expr_data_file, DataFrame)
 
-# Rename the expression columns to a letter indicating with life-cycle stage the sample
+# Rename the expression columns to a letter indicating which life-cycle stage the sample
 # was taken from.
 rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 
@@ -159,22 +171,22 @@ for i in 1:nrow(full_df)
         # H3K27ac
     gid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k27ac_upstream, k27ac_downstream), ind)) for ind in idxs_h3k27ac])
     pid_sig_h3k27ac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k27ac_upstream, k27ac_downstream), ind)) for ind in idxs_h3k27ac])
-    full_df[i, :H3K27ac] = mean([gid_sig_h3k27ac, pid_sig_h3k27ac]) / (fc ? group_means[1] : 1)
+    full_df[i, :H3K27ac] = mean([gid_sig_h3k27ac, pid_sig_h3k27ac])
 
         # H3K4me3
     gid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k4me3_upstream, k4me3_downstream), ind)) for ind in idxs_h3k4me3])
     pid_sig_h3k4me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k4me3_upstream, k4me3_downstream), ind)) for ind in idxs_h3k4me3])
-    full_df[i, :H3K4me3] = mean([gid_sig_h3k4me3, pid_sig_h3k4me3]) / (fc ? group_means[2] : 1)
+    full_df[i, :H3K4me3] = mean([gid_sig_h3k4me3, pid_sig_h3k4me3])
 
         # H3K9me3
     gid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), k9me3_upstream, k9me3_downstream), ind)) for ind in idxs_h3k9me3])
     pid_sig_h3k9me3 = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), k9me3_upstream, k9me3_downstream), ind)) for ind in idxs_h3k9me3])
-    full_df[i, :H3K9me3] = mean([gid_sig_h3k9me3, pid_sig_h3k9me3]) / (fc ? group_means[3] : 1)
+    full_df[i, :H3K9me3] = mean([gid_sig_h3k9me3, pid_sig_h3k9me3])
 
         # ATAC
     gid_sig_atac = mean([mean(getsiginrange(get(ref_genome, gid), GeneRange(TSS(), TES(), atac_upstream, atac_downstream), ind)) for ind in idxs_atac])
     pid_sig_atac = mean([mean(getsiginrange(get(ref_genome, pid), GeneRange(TSS(), TES(), atac_upstream, atac_downstream), ind)) for ind in idxs_atac])
-    full_df[i, :ATAC] = mean([gid_sig_atac, pid_sig_atac]) / (fc ? group_means[4] : 1)
+    full_df[i, :ATAC] = mean([gid_sig_atac, pid_sig_atac])
 end
 
 # Calculate the distance between paralogs
@@ -191,31 +203,41 @@ for i in 1:nrow(full_df)
     end
 end
 full_df.ParalogDist = paralog_dist
-full_df.SameChrom = ifelse.(isfinite.(full_df.ParalogDist), 1, 0)
 
 full_df_backup = copy(full_df) # Backup before normalization
 
 # PCA ANALYSIS: #
-if PCA_analysis
-# Z-score normalize the input variables
 full_df = copy(full_df_backup)
-full_df.H3K27ac = normalize_yj(full_df.H3K27ac)
-full_df.H3K4me3 = normalize_yj(full_df.H3K4me3)
-full_df.H3K9me3 = normalize_yj(full_df.H3K9me3)
-full_df.ATAC = normalize_yj(full_df.ATAC)
-full_df.ParalogProx = normalize_yj(full_df.ParalogProx)
+# Create indicator variables
+full_df.HasH3K27ac = ifelse.(full_df.H3K27ac .> 0, 1, 0)
+full_df.HasH3K4me3 = ifelse.(full_df.H3K4me3 .> 0, 1, 0)
+full_df.HasH3K9me3 = ifelse.(full_df.H3K9me3 .> 0, 1, 0)
+full_df.HasATAC = ifelse.(full_df.ATAC .> 0, 1, 0)
+full_df.SameChrom = ifelse.(isfinite.(full_df.ParalogDist), 1, 0)
+full_df.ParalogDist[isinf.(full_df.ParalogDist)] .= 0
 
-# Also the eventual predictor
-full_df.dS = normalize_yj(full_df.dS)
+# Normalize the data
+full_df.H3K27ac[full_df.H3K27ac .> 0] = logit_z(full_df.H3K27ac[full_df.H3K27ac .> 0])
+full_df.HasH3K27ac = zscore(full_df.HasH3K27ac)
+full_df.H3K4me3[full_df.H3K4me3 .> 0] = logit_z(full_df.H3K4me3[full_df.H3K4me3 .> 0])
+full_df.HasH3K4me3 = zscore(full_df.HasH3K4me3)
+full_df.H3K9me3[full_df.H3K9me3 .> 0] = logit_z(full_df.H3K9me3[full_df.H3K9me3 .> 0])
+full_df.HasH3K9me3 = zscore(full_df.HasH3K9me3)
+full_df.ATAC[full_df.ATAC .> 0] = logit_z(full_df.ATAC[full_df.ATAC .> 0])
+full_df.HasATAC = zscore(full_df.HasATAC)
+full_df.ParalogDist[full_df.ParalogDist .> 0] = log.(full_df.ParalogDist[full_df.ParalogDist .> 0]) |> zscore
+full_df.SameChrom = zscore(full_df.SameChrom)
+full_df.AvgExpr = zscore(full_df.AvgExpr)
+full_df.dS = log.(full_df.dS .+ ϵ) |> zscore
 
 #--------------- PCA ---------------#
 input_data = Matrix(full_df[:,4:end])'
-pca_model = fit(PCA, input_data, maxoutdim=6)
+pca_model = fit(PCA, input_data, maxoutdim=size(input_data, 1))
 pca_data = MultivariateStats.predict(pca_model, input_data)
 
 # Use the loadings from the PCA to draw a biplot
 loadings_matrix = MultivariateStats.loadings(pca_model) # Variables x PCs
-variable_names = ["AvgExpr", "H3K27ac", "H3K4me3", "H3K9me3", "ATAC", "ParalogProx"]
+variable_names = names(full_df)[4:end]
 
 # Scale factor to make loadings visible relative to data spread
 scale_factor = 3.0
@@ -232,9 +254,6 @@ push!(biplot_traces, scatter(
     showlegend=false
 ))
 
-# Colors for each loading vector
-colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
-
 # Add loading vectors as lines with arrowhead markers
 for (i, var_name) in enumerate(variable_names)
     pc1_loading = loadings_matrix[i, 1] * scale_factor
@@ -245,8 +264,8 @@ for (i, var_name) in enumerate(variable_names)
         x=[0, pc1_loading],
         y=[0, pc2_loading],
         mode="lines+markers",
-        line=attr(color=colors[i], width=2),
-        marker=attr(symbol="arrow", size=12, angleref="previous", color=colors[i]),
+        line=attr(width=2),
+        marker=attr(symbol="arrow", size=12, angleref="previous"),
         name=var_name
     ))
 end
@@ -265,7 +284,7 @@ biplot_layout = Layout(
 
 biplot_fig = plot(biplot_traces, biplot_layout)
 display(biplot_fig)
-savefig(biplot_fig, joinpath(data_dir, "pca_biplot_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").html"))
+savefig(biplot_fig, joinpath(data_dir, "pca_biplot_$(life_cycle).html"))
 
 #--------------- MLR on PCA components ---------------#
 pca_df = DataFrame(PC1 = pca_data[1, :],
@@ -275,9 +294,12 @@ pca_df = DataFrame(PC1 = pca_data[1, :],
                     PC5 = pca_data[5, :],
                     PC6 = pca_data[6, :],
                     PC7 = pca_data[7, :],
+                    PC8 = pca_data[8, :],
+                    PC9 = pca_data[9, :],
+                    PC10 = pca_data[10, :],
                     dS = full_df.dS)
 
-mlr_pca_model = lm(@formula(dS ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7), pca_df)
+mlr_pca_model = lm(@formula(dS ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10), pca_df)
 mlr_pca_table = DataFrame(coeftable(mlr_pca_model))
 r2_squared_pca = r²(mlr_pca_model)
 rename!(mlr_pca_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
@@ -286,76 +308,91 @@ mlr_pca_table = mlr_pca_table[2:end, :]  # Remove intercept row (p value of 1)
 mlr_pca_table.prop_var_explained = pca_model.prinvars ./ pca_model.tprinvar
 
 # For each of the original input variables, add a column with the loading on each PC
-mlr_pca_table.loading_AvgExpr = loadings_matrix[1, :]
-mlr_pca_table.loading_H3K27ac = loadings_matrix[2, :]
-mlr_pca_table.loading_H3K4me3 = loadings_matrix[3, :]
-mlr_pca_table.loading_H3K9me3 = loadings_matrix[4, :]
-mlr_pca_table.loading_ATAC = loadings_matrix[5, :]
-mlr_pca_table.loading_SameChrom = loadings_matrix[6, :]
-mlr_pca_table.loading_ParalogDist = loadings_matrix[7, :]
-
-CSV.write(joinpath(data_dir, "mlr_pca_results_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").csv"), mlr_pca_table)
+for (i, var_name) in enumerate(variable_names)
+    mlr_pca_table[!, Symbol(var_name * "_loading")] = loadings_matrix[i, :]
 end
-#--------------- Regular MLR ---------------#
-# For the ChIP/ATAC peaks, create binary variables indicating presence/absence of a peak
-# and normalize the enrichment values for only those genes that have peaks
-# Paralog distance
-full_df_mlr = copy(full_df_backup)
-full_df_mlr.H3K27ac = normalize_yj(full_df_mlr.H3K27ac)
-full_df_mlr.H3K4me3 = normalize_yj(full_df_mlr.H3K4me3)
-full_df_mlr.H3K9me3 = normalize_yj(full_df_mlr.H3K9me3)
-full_df_mlr.ATAC = normalize_yj(full_df_mlr.ATAC)
-full_df_mlr.ParalogProx = normalize_yj(full_df_mlr.ParalogProx)
-full_df_mlr.dS = normalize_yj(full_df_mlr.dS)
 
-# calculate the VIFs by calculating the correlation matrix and taking the diagonal of its inverse
-mat = Matrix(full_df_mlr[:,4:end])
-cor_mat = cor(mat)
-# Create a heatmap of the correlation matrix, with values annotated
-heatmap_trace = heatmap(
-    z=cor_mat,
-    x=names(full_df_mlr)[4:end],
-    y=names(full_df_mlr)[4:end],
-    colorscale="Viridis",
-    zmin=-1,
-    zmax=1,
-    colorbar=attr(title="Correlation")
+CSV.write(joinpath(data_dir, "mlr_pca_results_$(life_cycle).csv"), mlr_pca_table)
+
+# Plot results:
+plot_table = select(mlr_pca_table, [1, 2, 8:ncol(mlr_pca_table)...])
+DataFrames.transform!(plot_table, names(plot_table)[5:end] .=> (col -> col .* sign.(plot_table.Coef)) .=> names(plot_table)[5:end])
+for i in 1:nrow(plot_table)
+    loadings = Vector(plot_table[i,5:end])
+    loadings_total = abs.(loadings) |> sum
+    plot_table[i,5:end] .= abs.(loadings) ./ loadings_total .* plot_table.prop_var_explained[i] .* 100
+end
+
+#--------------- Stacked Bar Chart ---------------#
+# Get loading column names (columns 5 to end)
+loading_col_names = names(plot_table)[5:end]
+
+# Color mapping: related variables (coverage + indicator) share the same color
+color_map = Dict(
+    "AvgExpr"      => "#1f77b4",  # blue
+    "H3K27ac"      => "#ff7f0e",  # orange
+    "HasH3K27ac"   => "#ff7f0e",  # orange
+    "H3K4me3"      => "#2ca02c",  # green
+    "HasH3K4me3"   => "#2ca02c",  # green
+    "H3K9me3"      => "#d62728",  # red
+    "HasH3K9me3"   => "#d62728",  # red
+    "ATAC"         => "#9467bd",  # purple
+    "HasATAC"      => "#9467bd",  # purple
+    "ParalogDist"  => "#8c564b",  # brown
+    "SameChrom"    => "#8c564b",  # brown
 )
 
-heatmap_layout = Layout(
-    title="Correlation Matrix Heatmap $life_cycle",
-    xaxis=attr(tickangle=-45),
-    yaxis=attr(autorange="reversed")
+# Create bar traces for each loading variable
+bar_traces = GenericTrace[]
+for (j, col_name) in enumerate(loading_col_names)
+    # Clean up the display name by removing "_loading" suffix
+    display_name = replace(col_name, "_loading" => "")
+    
+    # Get color from map, fallback to gray if not found
+    marker_color = get(color_map, display_name, "#7f7f7f")
+    
+    push!(bar_traces, bar(
+        x = plot_table.Predictor,
+        y = plot_table[!, col_name],
+        name = display_name,
+        marker = attr(color = marker_color),
+        hovertemplate = "%{x}<br>$display_name: %{y:.2f}%<extra></extra>"
+    ))
+end
+
+# Create layout with barmode="stack" for stacked bars
+bar_layout = Layout(
+    title = attr(
+        text = "PCA Component Loading Contributions - $life_cycle",
+        x = 0.5,
+        xanchor = "center"
+    ),
+    xaxis = attr(
+        title = "Principal Component",
+        tickmode = "array",
+        tickvals = plot_table.Predictor,
+        categoryorder = "array",
+        categoryarray = plot_table.Predictor
+    ),
+    yaxis = attr(
+        title = "Weighted Loading Contribution (%)",
+        gridcolor = "lightgray"
+    ),
+    barmode = "stack",  # Stacks all bars upward from zero
+    legend = attr(
+        x = 1.02,
+        y = 1,
+        xanchor = "left",
+        yanchor = "top",
+        title = attr(text = "Variables")
+    ),
+    margin = attr(r = 180, b = 80),
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+    hovermode = "closest"
 )
 
-heatmap_fig = plot(heatmap_trace, heatmap_layout)
-display(heatmap_fig)
-savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").html"))
+bar_fig = plot(bar_traces, bar_layout)
+display(bar_fig)
+savefig(bar_fig, joinpath(data_dir, "pca_contributions_stacked_$(life_cycle).html"))
 
-inv_cor_mat = inv(cor_mat)
-vif_values = diag(inv_cor_mat)
-
-mlr_model = lm(
-    @formula(
-        dS ~
-        H3K27ac +
-        H3K4me3 +
-        H3K9me3 +
-        ATAC +
-        AvgExpr +
-        ParalogProx
-    ), 
-    full_df_mlr)
-mlr_table = DataFrame(coeftable(mlr_model))
-rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
-r_squared = r²(mlr_model)
-mlr_table.pvalue_adj = adjust(mlr_table[!, :pvalue], BenjaminiHochberg())
-
-sort!(mlr_table, :pvalue_adj)
-CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").csv"), mlr_table)
-stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle)$(sigregions_only ? "sigregions" : "allregions").txt"), "w")
-write(stats_file, "r²: $r_squared\n\nVIF Values:\n")
-for (i, col_name) in enumerate(names(full_df_mlr)[4:end])
-    write(stats_file, "$col_name: $(vif_values[i])\n")
-end
-close(stats_file)

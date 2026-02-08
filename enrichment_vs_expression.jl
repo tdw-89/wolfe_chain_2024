@@ -6,6 +6,27 @@ using Serialization
 using JSON
 using GLM
 
+TISSUE_TYPE = "F"  # Options: "All", "V", "M", "F"
+
+function get_sample_inds(tissue_type)
+    if tissue_type == "All"
+        return [
+            [1, 4, 7], # H3K27ac
+            [2, 5, 8], # H3K4me3
+            [3, 6, 9], # H3K9me3
+            [10, 11, 12] # ATAC
+            ]
+    elseif tissue_type == "V"
+        return [[1], [2], [3]]
+    elseif tissue_type == "M"
+        return [[1], [2], [3], [4]]
+    elseif tissue_type == "F"
+        return [[1], [2], [3], [4]]
+    else
+        error("Invalid TISSUE_TYPE: $tissue_type")
+    end
+end
+
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
     mark_names = ["K27ac", "K4me3", "K9me3", "ATAC"]
@@ -18,7 +39,7 @@ end
 
 universal_range = GeneRange(TSS(), TES(), -500, 500)
 
-# Peak files
+# Peak filessx
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 
@@ -50,12 +71,23 @@ expr_data = CSV.read(expr_data_file, DataFrame)
 # was taken from.
 rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 
-# Remove 'S' stage expression data, and rearrange so that the samples are in the order they
-# will be for the peak data
-# select!(expr_data, ["GeneID", "F", "M", "V"])
 # Average gene expression counts across all life-cycle stages
-insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
-select!(expr_data, ["GeneID", "Avg"])
+if TISSUE_TYPE == "All"
+    insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
+    select!(expr_data, ["GeneID", "Avg"])
+elseif TISSUE_TYPE == "V"
+    select!(expr_data, ["GeneID", "V"])
+    rename!(expr_data, Dict("V" => "Avg"))
+elseif TISSUE_TYPE == "S"
+    select!(expr_data, ["GeneID", "S"])
+    rename!(expr_data, Dict("S" => "Avg"))
+elseif TISSUE_TYPE == "M"
+    select!(expr_data, ["GeneID", "M"])
+    rename!(expr_data, Dict("M" => "Avg"))
+elseif TISSUE_TYPE == "F"
+    select!(expr_data, ["GeneID", "F"])
+    rename!(expr_data, Dict("F" => "Avg"))
+end
 
 # log-transform data with an added pseudocount of 0.5
 expr_data.Avg = log.(expr_data.Avg .+ 0.5)
@@ -72,11 +104,7 @@ open("../../dicty_data/filtered/final_gene_list.txt", "w") do file
 end
 
 # Plot enrichment vs expression
-k27ac_inds = [1, 4, 7]
-k4me3_inds = [2, 5, 8]
-k9me3_inds = [3, 6, 9]
-atac_inds = [10, 11, 12]
-sample_inds_vec = [k27ac_inds, k4me3_inds, k9me3_inds, atac_inds]
+sample_inds_vec = get_sample_inds(TISSUE_TYPE)
 
 # Global signal distributions (mean/std-dev) for each sample group across all filtered genes
 get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
@@ -93,16 +121,16 @@ global_means_vec = [get_sig_dist(filtered_gene_list, universal_range, sample_ind
 tss_enrich = plot_enrich_expr_region(expr_data, 
     filtered_gene_list, 
     sample_inds_vec, 
-    [GeneRange(TSS(), TSS(), -500, 0) for i in 1:5], 
+    [GeneRange(TSS(), TSS(), -500, 0) for i in 1:length(sample_inds_vec)], 
     fold_change_over_mean=false, 
     global_means=global_means_vec,
     z_min=z_min,
     z_max=z_max,
     return_figs=true)
 
-serialize(joinpath(ser_data_dir, "tss_enrich_plots_expr.jls"), tss_enrich)
+serialize(joinpath(ser_data_dir, "tss_enrich_plots_expr_$TISSUE_TYPE.jls"), tss_enrich)
 
-body_enrich = plot_enrich_expr_percent(expr_data, 
+body_enrich = plot_enrich_expr_percent(expr_data,
     filtered_gene_list, 
     sample_inds_vec, 
     fold_change_over_mean=false, 
@@ -111,25 +139,25 @@ body_enrich = plot_enrich_expr_percent(expr_data,
     z_max=z_max,
     return_figs=true)
 
-serialize(joinpath(ser_data_dir, "body_enrich_plots_expr.jls"), body_enrich)
+serialize(joinpath(ser_data_dir, "body_enrich_plots_expr_$TISSUE_TYPE.jls"), body_enrich)
 
 tes_enrich = plot_enrich_expr_region(expr_data,
     filtered_gene_list,
     sample_inds_vec,
-    [GeneRange(TES(), TES(), 0, 500) for i in 1:5],
+    [GeneRange(TES(), TES(), 0, 500) for i in 1:length(sample_inds_vec)],
     fold_change_over_mean=false,
     global_means=global_means_vec,
     z_min=z_min,
     z_max=z_max,
     return_figs=true)
 
-serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"), tes_enrich)
+serialize(joinpath(ser_data_dir, "tes_enrich_plots_expr_$TISSUE_TYPE.jls"), tes_enrich)
 
 bar_plots, kw_tests, means_vecs = plot_bar_expr(
     expr_data, 
     filtered_gene_list, 
     sample_inds_vec, 
-    [universal_range, universal_range, universal_range, universal_range],
+    [universal_range for i in 1:length(sample_inds_vec)],
     global_means_vec, 
     [z_min, z_max];
     fold_change_over_mean=false,
@@ -145,7 +173,10 @@ p_vals_perm_cor = [
         ref_genome
     ) for sample_ind in sample_inds_vec
 ]
+# V: Correlations + p values equivalent, no ATAC
+# M: Correlations + p values equivalent
+# F: Correlations + p values equivalent
 adj_pvals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
 adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
-serialize(joinpath(ser_data_dir, "bar_plots_expr.jls"), bar_plots)
-serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr.json"), means_vecs)
+serialize(joinpath(ser_data_dir, "bar_plots_expr_$TISSUE_TYPE.jls"), bar_plots)
+serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr_$TISSUE_TYPE.json"), means_vecs)

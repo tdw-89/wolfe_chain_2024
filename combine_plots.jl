@@ -49,6 +49,7 @@ end
 
 save_plots = true
 box_plots = true
+tissue_type = "All" # Options: "All", "V", "M", "F"
 x_tick_font = attr(family="Times New Roman", size=26)
 y_tick_font = attr(family="Times New Roman", size=36)
 title_font_size = 30
@@ -63,25 +64,22 @@ ser_data_dir = "../../dicty_data/julia_serialized/"
 plot_save_dir = "../../dicty_data/saved_figures/"
 
 # Expression enrichment plots:
-tss_expr_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_expr.jls"))
-body_expr_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_expr.jls"))
-tes_expr_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_expr.jls"))
-bar_expr = deserialize(joinpath(ser_data_dir, "bar_plots_expr.jls"))
+tss_expr_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_expr_$tissue_type.jls"))
+body_expr_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_expr_$tissue_type.jls"))
+tes_expr_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_expr_$tissue_type.jls"))
+bar_expr = deserialize(joinpath(ser_data_dir, "bar_plots_expr_$tissue_type.jls"))
 
 # dS enrichment plots:
-tss_dS_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS.jls"))
-body_dS_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS.jls"))
-tes_dS_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS.jls"))
-bar_dS = deserialize(joinpath(ser_data_dir, "bar_plots_dS.jls"))
+tss_dS_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_$tissue_type.jls"))
+body_dS_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS_$tissue_type.jls"))
+tes_dS_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_$tissue_type.jls"))
+bar_dS = deserialize(joinpath(ser_data_dir, "bar_plots_dS_$tissue_type.jls"))
 tss_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tss_enrich_plots_dS.jls"))
 body_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_body_enrich_plots_dS.jls"))
 tes_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tes_enrich_plots_dS.jls"))
 bar_dS_human = deserialize(joinpath(ser_data_dir, "human_bar_plots_dS.jls"))
 
-sample_names = ["K27ac", 
-                "K4me3", 
-                "K9me3", 
-                "ATAC"]
+sample_names = tissue_type == "V" ? ["K27ac", "K4me3", "K9me3"] : ["K4me3", "K27me3", "K9me3", "ATAC"]
 for i in eachindex(sample_names)
     fig = make_subplots(
         rows=4, cols=3,
@@ -173,7 +171,7 @@ for i in eachindex(sample_names)
                             linecolor="black",
                             linewidth=2,
                             mirror=true),
-                title=sample_names[i], 
+                title=sample_names[i] * " $tissue_type", 
                 titlefont=attr(size=title_font_size, 
                                family="Times New Roman"))
 
@@ -255,12 +253,13 @@ for i in eachindex(sample_names)
     remove_heatmap_colorbars!(fig)
     
     if save_plots
-        savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS.html"))
+        savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS_$tissue_type.html"))
     
     end
     display(fig)
 end
 
+#________________________________________________________________________________________
 # Human:
 fig_h = make_subplots(
     rows=2, cols=3,
