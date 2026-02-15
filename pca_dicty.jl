@@ -40,9 +40,8 @@ function logit_z(vec::Vector{Float64})
     return zscore(log_odd_vec)
 end
 
-
 data_dir = "../../dicty_data/"
-life_cycle = "All" # "F" "M" "V" or "All"
+life_cycle = "M" # "F" "M" or "All"
 PCA_analysis = true
 
 k27ac_upstream, k4me3_upstream, k9me3_upstream, atac_upstream = -500, -500, -500, -500
@@ -363,7 +362,7 @@ end
 # Create layout with barmode="stack" for stacked bars
 bar_layout = Layout(
     title = attr(
-        text = "PCA Component Loading Contributions - $life_cycle",
+        text = "PCA Component Loading Contributions - $life_cycle<br><sub>R<sup>2</sup> = $(round(r2_squared_pca, digits=3))</sub>",
         x = 0.5,
         xanchor = "center"
     ),
@@ -375,7 +374,7 @@ bar_layout = Layout(
         categoryarray = plot_table.Predictor
     ),
     yaxis = attr(
-        title = "Weighted Loading Contribution (%)",
+        title = "Loading Proportion",
         gridcolor = "lightgray"
     ),
     barmode = "stack",  # Stacks all bars upward from zero
@@ -395,4 +394,3 @@ bar_layout = Layout(
 bar_fig = plot(bar_traces, bar_layout)
 display(bar_fig)
 savefig(bar_fig, joinpath(data_dir, "pca_contributions_stacked_$(life_cycle).html"))
-

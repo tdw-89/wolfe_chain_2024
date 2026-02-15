@@ -88,8 +88,6 @@ for id in te_dist_df.GeneID
     end
 end
 
-# DEBUG REMOVE
-ref_genome = deserialize("./temp_data/ref.jls")
 
 # TE distance distribution among filtered coding genes vs paralogs without H3K9me3:
 paralog_ids = vcat(paralog_data.GeneID, paralog_data.ParalogID)
@@ -136,13 +134,14 @@ record_test!(test_results,
 # Are the distributions of TE distances significantly different between paralogs with and without K9me3? (A: Yes - All TEs) -> 1.9360047325770461e-59
 te_distances_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> id ∈ ids_with_k9me3 && id ∈ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3_dups = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&& map(id -> !(id ∈ ids_with_k9me3) && id ∈ paralog_ids, te_dist_df.GeneID)]
-display(plot([box(y=te_distances_k9me3_dups, name="TE Distance w/ K9me3 (Paralogs)", marker_color="blue"), 
-      box(y=te_distances_dups, name="TE Distance w/o k9me3 (Paralogs)", marker_color="red")],
-      Layout(yaxis=attr(title="TE Distance"), plot_bgcolor="rgba(0,0,0,0)")))
+fig = plot([box(y=log10.(te_distances_k9me3_dups .+ 1), name="TE Distance w/ K9me3 (Paralogs)", marker_color="blue"), 
+      box(y=log10.(te_distances_no_k9me3_dups .+ 1), name="TE Distance w/o k9me3 (Paralogs)", marker_color="red")],
+      Layout(yaxis=attr(title="log10(TE Distance)"), plot_bgcolor="rgba(0,0,0,0)"))
 record_test!(test_results,
     "MannWhitneyUTest (TE distance; paralogs with vs without H3K9me3)",
     MannWhitneyUTest(te_distances_k9me3_dups, te_distances_no_k9me3_dups),
     "Mann–Whitney U test: compares TE-distance distributions between paralogs with H3K9me3 vs without.")
+savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_distance_by_k9me3_status_paralogs_human.html"))
 
 # Are the ratios of TE overlap significantly different between paralogs with and without K9me3? (A: Yes - All TEs) -> 25.493113707490779e-66
 plot(bar(x=["Paralogs With H3K9me3", "Paralogs Without H3K9me3"], 

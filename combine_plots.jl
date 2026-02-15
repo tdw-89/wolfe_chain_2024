@@ -79,7 +79,7 @@ body_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_body_enrich_plo
 tes_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tes_enrich_plots_dS.jls"))
 bar_dS_human = deserialize(joinpath(ser_data_dir, "human_bar_plots_dS.jls"))
 
-sample_names = tissue_type == "V" ? ["K27ac", "K4me3", "K9me3"] : ["K4me3", "K27me3", "K9me3", "ATAC"]
+sample_names = tissue_type == "V" ? ["H3K27ac", "H3K4me3", "H3K9me3"] : ["H3K4me3", "H3K27ac", "H3K9me3", "ATAC"]
 for i in eachindex(sample_names)
     fig = make_subplots(
         rows=4, cols=3,

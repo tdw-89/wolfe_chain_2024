@@ -87,6 +87,8 @@ addtogenes!(ref_genome, peak_data)
 paralog_data = CSV.read(paralog_file, DataFrame)
 filter!(row -> row["dS"] <= 3, paralog_data)
 CSV.write("../../dicty_data/filtered/paralog_ds_filt.csv", paralog_data)
+fig = plot(histogram(x=paralog_data.dS), Layout(title="Distribution of dS values for paralog pairs", xaxis_title="dS", yaxis_title="Count"))
+savefig(fig, "../../dicty_data/filtered/paralog_ds_hist.html")
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # paralog_data[findall(map(id -> !siginrange(get(ref_genome, id),  GeneRange(TSS(), TES(), -500, 500)), paralog_data.ParalogID)),:]

@@ -143,7 +143,8 @@ record_test!(test_results,
 te_distances_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∈ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 te_distances_no_k9me3 = te_dist_df.Distance[te_dist_df.Distance .!= Inf .&&  map(id -> id ∉ ids_with_k9me3 && id ∉ paralog_ids, te_dist_df.GeneID)]
 
-plot([box_plt_blue(log.(te_distances_k9me3), "With H3K9me3"), box_plt_red(log.(te_distances), "Without H3K9me3")], box_layout)
+fig = plot([box_plt_blue(log.(te_distances_k9me3), "With H3K9me3"), box_plt_red(log.(te_distances), "Without H3K9me3")], box_layout)
+savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_distance_by_k9me3_status.html"))
 record_test!(test_results,
     "MannWhitneyUTest (log TE distance; non-paralogs with vs without H3K9me3)",
     MannWhitneyUTest(log.(te_distances_k9me3), log.(te_distances_no_k9me3)),

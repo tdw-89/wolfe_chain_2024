@@ -3,76 +3,44 @@ library(circlize)
 library(regioneR)
 library(rtracklayer)
 library(dplyr)
+library(conflicted)
 conflicts_prefer(dplyr::filter)
 
 # Files
-te_files_dir <- "../../dicty_data/AX4/genome_ver_2_7/TEs"
-gff_dir <- "../../dicty_data/AX4/genome_ver_2_7/gff3"
+te_file <- "../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
+chrom_lengths_ensembl <- "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 peak_dir <- "../../dicty_data/wang_et_al/processed/run_1_ensembl52"
 peak_dir_2 <- "../../dicty_data/wang_et_al/processed/run_2_ensembl52"
 
-# Functions: #
-trim_names <- function(x){
-  temp_name <- strsplit(x, "_")[[1]][2]
-  return(paste("chr", temp_name, sep=""))
-}
-
 # load dicty genome data:
-dicty_gff_files <- list.files(gff_dir, pattern = "chromosome.*gff", full.names = T)
-dicty_granges <- lapply(dicty_gff_files, rtracklayer::readGFFAsGRanges)
-names(dicty_granges) <- unlist(lapply(dicty_gff_files, function(x){return(strsplit(basename(x), "[.]")[[1]][1])}))
-dicty_granges_list <- GRangesList(dicty_granges)
-
-chrom_df <- data.frame("chr" = unname(sapply(names(dicty_granges), trim_names)),
-                       "start" = rep(1, length(dicty_granges)),
-                       "end" = unname(sapply(dicty_granges, function(x){x@ranges@width[1]})))
-
-chrom_ids <- levels(dicty_granges_list@unlistData@seqnames)
-chrom_conversion <- data.frame("ID" = chrom_ids, "name" = chrom_df$chr)
-
-chrom_df <- chrom_df %>% filter(chr %in% c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6"))
-genome_grange <- toGRanges(chrom_df)
-chrom_granges <- lapply(chrom_df$chr, function(x, df){
-  temp_df <- df[df$chr == x,]
-  return(toGRanges(temp_df))
-}, chrom_df)
-
-names(chrom_granges) <- chrom_df$chr
+chrom_length_df <- read.delim(chrom_lengths_ensembl, header=F)
+chrom_length_df$V1 <- paste("chr", chrom_length_df$V1, sep="")
+chrom_seqs <- Seqinfo(chrom_length_df$V1, seqlengths = chrom_length_df$V2)
 
 # Load dicty transposon data:
-te_bed_files <- list.files(te_files_dir, pattern = "ranges.bed", full.names = T)
-rte_df <- read.delim(te_bed_files[grepl("rte", te_bed_files)], header=F)
-dna_te_df <- read.delim(te_bed_files[grepl("dna_", te_bed_files)], header=F)
-names(rte_df) <- c("chr", "start", "end", "name", "score", "strand")
-names(dna_te_df) <- c("chr", "start", "end", "name", "score", "strand")
+te_df <- read.csv(te_file, header=T, stringsAsFactors = F)
+te_df$Chromosome <- paste("chr", te_df$Chromosome, sep="")
+dna_te_df <- te_df |> filter(startsWith(Type, "DNA"))
+rte_df <- te_df |> filter(!startsWith(Type, "DNA"))
+names(rte_df) <- c("chr", "start", "end", "type", "family", "id")
+names(dna_te_df) <- c("chr", "start", "end", "type", "family", "id")
 
-# Rename the chromosomes to the simple name (e.g., chrX)
+##### Create initial plot #################################################################################
+chroms_to_show <- paste("chr", as.character(seq(1:6)), sep="")
+kp <- plotKaryotype(genome = chrom_seqs, plot.type = 2, chromosomes = chroms_to_show) #####################
+##### Create initial plot #################################################################################
 
-for(i in 1:nrow(rte_df)){
-  
-  conv_ind <- grepl(rte_df$chr[i], chrom_conversion$ID)
-  rte_df$chr[i] <- chrom_conversion$name[conv_ind]
-}
-for(i in 1:nrow(dna_te_df)){
-  
-  conv_ind <- grepl(dna_te_df$chr[i], chrom_conversion$ID)
-  dna_te_df$chr[i] <- chrom_conversion$name[conv_ind]
-}
-
-
-##### Create initial plot ######################################################
-kp <- plotKaryotype(genome = genome_grange, plot.type = 2) #####################
-##### Create initial plot ######################################################
+window_size <- 10000
 
 rte_grange <- toGRanges(rte_df)
 dna_te_grange <- toGRanges(dna_te_df)
 
 # Add to the plots
-kpPlotRegions(kp, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
-# kpPlotDensity(kp, data = rte_grange)
+kpPlotDensity(kp, data = dna_te_grange, col="#AACCFF", window.size = window_size)
+# kpPlotRegions(kp, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
 
-kpPlotRegions(kp, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
-# kpPlotDensity(kp_dna_te, data = dna_te_grange)
+kpPlotDensity(kp, data = rte_grange, col="#EED0A0", window.size = window_size)
+# kpPlotRegions(kp, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
 
 # Load K9me3 data
 peak_files <- list.files(peak_dir, full.names = T)
@@ -97,10 +65,6 @@ for(d in 1:length(k9me3_dfs_trimmed)){
   }
 }
 
-k9me3_dfs_trimmed <- lapply(k9me3_dfs_trimmed, function(df){
-  df |> filter(chr %in% chrom_conversion$name)
-})
-
 # Convert dfs to individual Granges
 k9me3_granges <- lapply(k9me3_dfs_trimmed, toGRanges)
 
@@ -110,7 +74,8 @@ k9me3_grange_combined <- toGRanges(k9me3_df_combined)
 # kpPlotRegions(kp, k9me3_grange_combined)
 
 # Add to plot:
-kpPlotRegions(kp, k9me3_grange_combined, col="#9F313F", avoid.overlapping=F, data.panel = 2, r0=0, r1=0.5)
+kpPlotDensity(kp, k9me3_grange_combined, col="#9F313F", window.size = window_size, data.panel = 2, r0=0, r1=0.5)
+# kpPlotRegions(kp, k9me3_grange_combined, col="#9F313F", avoid.overlapping=F, data.panel = 2, r0=0, r1=0.5)
 
 # Load ATAC data:
 peak_files_2 <- list.files(peak_dir_2, full.names = T)

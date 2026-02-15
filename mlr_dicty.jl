@@ -52,7 +52,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "All" # "F" "M" "V" or "All"
+life_cycle = "V" # "F" "M" "V" or "All"
 
 gene_range = GeneRange(TSS(), TES(), -500, 500)
 
@@ -237,17 +237,17 @@ var_names = [
     "Same Chromosome"
 ]
 heatmap_trace = heatmap(
-    z=cor_mat,
+    z=abs.(cor_mat),
     x=var_names,
     y=var_names,
     colorscale="Viridis",
-    zmin=-1,
+    zmin=0,
     zmax=1,
-    colorbar=attr(title="Correlation")
+    colorbar=attr(title="Correlation (Absolute Value)")
 )
 
 heatmap_layout = Layout(
-    title="Correlation Matrix Heatmap",
+    title="Correlation Matrix Heatmap - $life_cycle",
     xaxis=attr(tickangle=-45),
     yaxis=attr(autorange="reversed")
 )
