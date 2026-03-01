@@ -1,6 +1,7 @@
 include("prelude.jl")
 
 using CategoricalArrays
+using HypothesisTests
 
 LOW_DS_QUANT_NUM_CUTOFF = 2
 global_range = GeneRange(TSS(), TES(), -500, 500)
@@ -8,13 +9,14 @@ global_range = GeneRange(TSS(), TES(), -500, 500)
 using .EnrichmentUtils
 using .MiscUtils
 
-function in_significant_range(gene::Gene, sig_range, ind)
+function has_sig_in_range(gene::Gene, sig_range, ind)
     return sum(getsiginrange(gene, sig_range, ind)) > 0
 end
 
 # Genome data
 gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+te_distance_file = "../../dicty_data/te_distance.csv"
 
 # Expression data
 expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
@@ -68,9 +70,9 @@ paralog_genes_low =
         paralog_data.ParalogID[quantile_vals .<= LOW_DS_QUANT_NUM_CUTOFF]
         )))
 paralog_gene_expr_low = [mean(gene.rnas[1].expression) for gene in paralog_genes_low]
-paralog_gene_has_k9me3_low_1 = [in_significant_range(gene, global_range, 3) for gene in paralog_genes_low]
-paralog_gene_has_k9me3_low_2 = [in_significant_range(gene, global_range, 6) for gene in paralog_genes_low]
-paralog_gene_has_k9me3_low_3 = [in_significant_range(gene, global_range, 9) for gene in paralog_genes_low]
+paralog_gene_has_k9me3_low_1 = [has_sig_in_range(gene, global_range, 3) for gene in paralog_genes_low]
+paralog_gene_has_k9me3_low_2 = [has_sig_in_range(gene, global_range, 6) for gene in paralog_genes_low]
+paralog_gene_has_k9me3_low_3 = [has_sig_in_range(gene, global_range, 9) for gene in paralog_genes_low]
 paralog_gene_has_k9me3_low = paralog_gene_has_k9me3_low_1 .| paralog_gene_has_k9me3_low_2 .| paralog_gene_has_k9me3_low_3
 
 # Table for plotting (in R):
@@ -98,3 +100,11 @@ Threads.@threads for i in eachindex(paralog_genes_low)
 end 
 
 CSV.write("../../dicty_data/low_ds_df.csv", low_ds_df)
+
+te_distance = CSV.read(te_distance_file, DataFrame)
+
+has_k9me3_ids = low_ds_df.GeneID[low_ds_df.HasK9me3 .== true]
+no_k9me3_ids = low_ds_df.GeneID[low_ds_df.HasK9me3 .== false]
+te_distance_has_k9me3 = te_distance[findall(id -> id ∈ has_k9me3_ids, te_distance.GeneID), :]
+te_distance_no_k9me3 = te_distance[findall(id -> id ∈ no_k9me3_ids, te_distance.GeneID), :]
+mwu_test = MannWhitneyUTest(te_distance_has_k9me3.Distance, te_distance_no_k9me3.Distance)

@@ -31,7 +31,7 @@ function record_test!(results::DataFrame, label::AbstractString, test, descripti
 end
 
 reload_peak_data = true
-te_type = "TE"
+te_type = "LTR"
 
 # Peak files
 # chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
@@ -59,6 +59,9 @@ paralog_data = CSV.read(paralog_file, DataFrame)
 # Filter the paralogs:
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 filter!(row -> row.dS <= 3, paralog_data)
+
+fig = plot(histogram(x=paralog_data.dS), Layout(title="Distribution of dS for filtered paralogs", xaxis=attr(title="dS")))
+savefig(fig, "../../dicty_data/paralog_dS_histogram.html")
 
 # Load peak data
 if reload_peak_data
@@ -211,5 +214,5 @@ record_test!(test_results,
 # --- Summary table of hypothesis tests ---
 display(test_results)
 
-out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_dist_human.csv")
+out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_dist_human_$te_type.csv")
 CSV.write(out_path, test_results)

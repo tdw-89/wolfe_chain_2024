@@ -17,7 +17,8 @@ rename!(paralog_data, ["GeneID", "ParalogID", "PercIDqt", "PercIDtq", "dS","dN",
 
 # Identify the singletons
 singletons = unique(select(filter(row -> ismissing(row.ParalogID), paralog_data), :GeneID))
-filter!(row -> row.GeneID ∈ cds_df[!,1] && row.GeneID ∉ nmd_df[!,1], singletons)
+filter!(row -> row.GeneID ∈ cds_df[!,1], singletons)
+filter!(row -> row.GeneID ∉ nmd_df[!,1], singletons)
 CSV.write("../../dicty_data/filtered/human_singletons_filt.csv", singletons)
 
 # Filter the paralog data

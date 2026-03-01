@@ -145,3 +145,4 @@ genome_size = values(ref_genome.scaffolds) |>
     sv -> map(s -> s.scaffold_end - s.scaffold_start + 1, sv) |> 
     sum
 sum([te.End - te.Start + 1 for te in eachrow(te_df_ensembl)]) / genome_size * 100.0
+
