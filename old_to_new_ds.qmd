@@ -1,0 +1,226 @@
+---
+engine: julia
+julia:
+  exeflags: ["--project=@."]
+title: "dN/dS comparison (Dictyostelium)"
+author: "Tom Wolfe"
+date: "4/11/2026"
+format:
+  html:
+    toc: true
+theme: sandstone
+execute: 
+  enabled: true
+---
+
+```{julia}
+#| echo: false
+
+# Libraries
+using CSV
+using DataFrames
+using FASTX
+using PlotlyJS
+using StatsBase
+using Statistics
+
+# Functions
+function getcors(x1,x2)
+    temp_df = DataFrame("x1" => x1, "x2" => x2)
+    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    temp_df.x1 = Float64.(temp_df.x1)
+    temp_df.x2 = Float64.(temp_df.x2)
+    return corspearman(temp_df.x1, temp_df.x2)
+end
+
+function getcorl(x1,x2)
+    temp_df = DataFrame("x1" => x1, "x2" => x2)
+    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    temp_df.x1 = Float64.(temp_df.x1)
+    temp_df.x2 = Float64.(temp_df.x2)
+    return cor(temp_df.x1, temp_df.x2)
+end
+
+function tomap(df::DataFrame)
+    dict = Dict()
+    for i in 1:nrow(df)
+        gid = df[i,1]
+        pid = df[i,2]
+        dict[gid * "-" * pid] = (df[i,3],df[i,4])
+        dict[pid * "-" * gid] = (df[i,3],df[i,4])
+    end
+    return dict
+end
+
+function rankrank(x1, x2, skipzeros=false)
+    temp_df = DataFrame("x1" => x1, "x2" => x2)
+    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    temp_df.x1 = Float64.(temp_df.x1)
+    temp_df.x2 = Float64.(temp_df.x2)
+    if skipzeros
+        filter!(row -> row.x1 > 0 && row.x2 > 0, temp_df)
+    end
+    temp_df.x1_rank = ordinalrank(temp_df.x1)
+    temp_df.x2_rank = ordinalrank(temp_df.x2)
+    return scatter(x=temp_df.x1_rank, y=temp_df.x2_rank, mode="markers")
+end
+
+function parse_with_na(str)
+    if isa(str, Missing)
+        return missing
+    elseif isa(str, Number)
+        return str
+    end
+    if lowercase(str) == "na"      || 
+       lowercase(str) == "missing" || 
+       str == ""
+        return missing
+    else
+        return parse(Float64, str)
+    end
+end
+
+function format!(df::DataFrame)
+    rename!(df, ["GeneID", "ParalogID", "dN", "dS", "Perc1", "Perc2"])
+    df.dN = map(parse_with_na, df.dN)
+    df.dS = map(parse_with_na, df.dS)
+    df.Perc1 = map(parse_with_na, df.Perc1)
+    df.Perc2 = map(parse_with_na, df.Perc2)
+end
+```
+
+## The Data
+
+```{julia}
+## Original (Ensembl 52-based) dN/dS values
+oldds = CSV.read("../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt", DataFrame) 
+select!(oldds, [1,15,3,4,5,6]) 
+format!(oldds)
+
+## New YN00-based dN/dS values
+newds = CSV.read("/Users/thomaswolfe/Documents/dicty_data/new_ds_dicty.csv", DataFrame)
+recs = []
+open(FASTA.Reader, "/Users/thomaswolfe/Documents/temp_for_analysis/Dictyostelium_discoideum.dicty_2.7.pep.all.fa") do reader
+    for rec in reader
+        push!(recs, rec)
+    end
+end
+oldds.Perc2 = map(parse_with_na, oldds.Perc2)
+
+## New YN00-based dN/dS values
+newds = CSV.read("/Users/thomaswolfe/Documents/dicty_data/new_ds_dicty.csv", DataFrame)
+recs = []
+open(FASTA.Reader, "/Users/thomaswolfe/Documents/temp_for_analysis/Dictyostelium_discoideum.dicty_2.7.pep.all.fa") do reader
+    for rec in reader
+        push!(recs, rec)
+    end
+end
+pids = map(rec -> split(description(rec))[1], recs)
+gids = map(rec -> split(split(description(rec))[4], ":")[2], recs)
+ptog=Dict(zip(pids,gids))
+gtop=Dict(zip(gids,pids))
+insertcols!(newds, "GeneID" => map(id -> ptog[id], newds.seq1))
+insertcols!(newds, "ParalogID" => map(id -> ptog[id], newds.seq2)) 
+select!(newds, [31,32,3:30...,1,2])
+select!(newds, [1,2,13,15,3,4])
+format!(newds)
+
+## Create pair-order agnostic lookup tables for old and new dN/dS values
+map_new = tomap(newds) 
+map_old = tomap(oldds) 
+
+## Original filtered pairs
+old_pairs = CSV.read("../../dicty_data/filtered/paralog_ds_filt.csv", DataFrame)
+select!(old_pairs, [1,2,5,6,3,4])
+format!(old_pairs)
+```
+
+## Old (Ensembl 52-based) dS values
+
+```{julia}
+#| label: fig-old-ds-hist
+#| fig-cap: "Distribution of old (Ensembl 52-based) dS values"
+plt = histogram(
+    x = oldds.dS |> skipmissing |> collect
+)
+layout = Layout(title="Distribution of old (Ensembl 52-based) dS values", xaxis_title="dS", yaxis_title="Count")
+plot(plt, layout)
+```
+
+## New (YN00-based) dS values
+
+```{julia}
+#| label: fig-new-ds-hist
+#| fig-cap: "Distribution of new (YN00-based) dS values"
+plt = histogram(
+    x = newds.dS |> skipmissing |> collect
+)
+layout = Layout(title="Distribution of new (YN00-based) dS values", xaxis_title="dS", yaxis_title="Count")
+plot(plt, layout)
+```
+## Spearman and Pearson correlation of old vs. new dS values
+### All new values from pairs matching old pairs
+```{julia}
+#| output: asis
+old_in_new = [
+    [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
+    for row in eachrow(oldds) 
+    if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
+]
+dS_new = [s[1][2][2] for s in old_in_new] 
+dS_old = [s[2][2][2] for s in old_in_new]
+dN_new = [s[1][2][1] for s in old_in_new] 
+dN_old = [s[2][2][1] for s in old_in_new]
+ds_cors = getcors(dS_new, dS_old)
+ds_corl = getcorl(dS_new, dS_old) 
+dn_cors = getcors(dN_new, dN_old) 
+dn_corl = getcorl(dN_new, dN_old)
+println("""
+| Correlation | Statistic | Value |
+|-|-|-|
+| ρ | dS | $ds_cors |
+| r | dS | $ds_corl |
+| ρ | dN | $dn_cors |
+| r | dN | $dn_corl |
+""")
+```
+
+### Rank-rank plot of old vs. new dS values for all pairs matching old pairs
+```{julia}
+#| label: fig-rank-rank-ds
+#| fig-cap: "Rank-rank plot of old vs. new dS values for all pairs matching old pairs"
+rankrank(dS_new, dS_old) |> plot
+```
+
+## Original filtered pairs
+```{julia}
+#| label: fig-old-filtered-ds
+#| fig-cap: "Rank-rank plot of old vs. new dS values for
+#| fig-subcap: "Original filtered pairs"
+old_filt_in_new = [
+    [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
+    for row in eachrow(old_pairs) 
+    if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
+]
+
+dS_new_filt = [s[1][2][2] for s in old_filt_in_new] 
+dS_old_filt = [s[2][2][2] for s in old_filt_in_new]
+ds_cors_filt = getcors(dS_new_filt, dS_old_filt)
+ds_corl_filt = getcorl(dS_new_filt, dS_old_filt) 
+println("""| Correlation | Statistic | Value |
+|-|-|-|
+| ρ | dS | $ds_cors_filt |
+| r | dS | $ds_corl_filt |
+""")
+
+rankrank(dS_new_filt, dS_old_filt) |> plot
+```
+
+```{julia}
+## Save the old pairs with new dN/dS values for future reference
+old_pairs.New_dS = map(
+    row -> haskey(map_new, row.GeneID * "-" * row.ParalogID) ? map_new[row.GeneID * "-" * row.ParalogID][2] : missing, 
+    eachrow(old_pairs)
+)
+CSV.write("../../dicty_data/old_pairs_with_new_ds.csv", old_pairs)
+```

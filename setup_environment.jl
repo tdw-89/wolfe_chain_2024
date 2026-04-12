@@ -20,29 +20,8 @@ external_deps = [
     "NaturalSort", "Interpolations", "XAM", "GenomicFeatures", "Indexes",
     "TranscodingStreams", "DataStructures", "Graphs", "MetaGraphs", "EzXML",
     "RollingFunctions", "DSP", "HypothesisTests", "MultipleTesting", "FASTX",
-    "GFF3", "FreqTables", "Loess", "CodecZlib", "BGZFStreams",
+    "FreqTables", "Loess", "CodecZlib", "BGZFStreams",
     "FixedPointNumbers", "GLM", "Automa", "JSON", "Distributions", "StatsModels"
 ]
-
-to_install = String[]
-
-for pkg in external_deps
-
-    try
-        # Check if the package is already installed
-        temp_expr = quote
-            using $(Symbol(pkg))
-        end
-        eval(temp_expr)
-    catch e
-        push!(to_install, pkg)
-    end
-end
-
-# Install missing packages
-if !isempty(to_install)
-    Pkg.add(to_install)
-    
-end
-
+Pkg.add(external_deps)
 println("All packages installed")

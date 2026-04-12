@@ -7,6 +7,7 @@ using JSON
 using Random
 
 TISSUE_TYPE = "All"  # Options: "All", "V", "M", "F"
+NEWDS = true #
 
 function get_sample_inds(tissue_type)
     if tissue_type == "All"
@@ -87,8 +88,15 @@ addtogenes!(ref_genome, peak_data)
 paralog_data = CSV.read(paralog_file, DataFrame)
 filter!(row -> row["dS"] <= 3, paralog_data)
 CSV.write("../../dicty_data/filtered/paralog_ds_filt.csv", paralog_data)
+##### |||| ##### |||| ##### |||| ##### |||| ##### |||| ##### |||| #####
+if NEWDS
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds.csv", DataFrame)
+    paralog_data.dS = paralog_data.New_dS
+    filter!(row -> !ismissing(row["dS"]) && row["dS"] <= 3, paralog_data)
+end
+##### |||| ##### |||| ##### |||| ##### |||| ##### |||| ##### |||| #####
 fig = plot(histogram(x=paralog_data.dS), Layout(title="Distribution of dS values for paralog pairs", xaxis_title="dS", yaxis_title="Count"))
-savefig(fig, "../../dicty_data/filtered/paralog_ds_hist.html")
+savefig(fig, "../../dicty_data/filtered/paralog_ds_hist_$(NEWDS ? "newds" : "").html")
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # paralog_data[findall(map(id -> !siginrange(get(ref_genome, id),  GeneRange(TSS(), TES(), -500, 500)), paralog_data.ParalogID)),:]
@@ -106,7 +114,7 @@ sample_inds_vec = get_sample_inds(TISSUE_TYPE)
 get_mean_sig(gene, gene_range, sample_inds) = mean([mean(getsiginrange(gene, gene_range, sample_ind)) for sample_ind in sample_inds])
 get_global_mean(gene_list, sample_inds) = mean([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
 get_global_std_dev(gene_list, sample_inds) = std([get_mean_sig(gene, gene_range, sample_inds) for gene in gene_list])
-get_sig_dist(gene_list, sample_inds) = 
+get_sig_dist(gene_list, sample_inds) =
     EnrichmentUtils.SignalDistribution(
         get_global_mean(gene_list, sample_inds), 
         get_global_std_dev(gene_list, sample_inds)
@@ -125,7 +133,7 @@ tss_enrich = plot_enrich_region(
     return_figs=true
     )
 
-serialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_$TISSUE_TYPE.jls"), tss_enrich)
+serialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_$TISSUE_TYPE$(NEWDS ? "_newds" : "").jls"), tss_enrich)
 
 body_enrich = plot_enrich_percent(paralog_data,
 filtered_paralog_list, 
@@ -136,7 +144,7 @@ filtered_paralog_list,
     z_max=z_max,
     return_figs=true)
 
-serialize(joinpath(ser_data_dir, "body_enrich_plots_dS_$TISSUE_TYPE.jls"), body_enrich)
+serialize(joinpath(ser_data_dir, "body_enrich_plots_dS_$TISSUE_TYPE$(NEWDS ? "_newds" : "").jls"), body_enrich)
 
 tes_enrich = plot_enrich_region(paralog_data,
 filtered_paralog_list,
@@ -148,7 +156,7 @@ filtered_paralog_list,
     z_max=z_max,
     return_figs=true)
 
-serialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_$TISSUE_TYPE.jls"), tes_enrich)
+serialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_$TISSUE_TYPE$(NEWDS ? "_newds" : "").jls"), tes_enrich)
 
 # Plot bar plots of coverage in significant regions
 bar_plots, kw_tests, means_vecs = 
@@ -170,5 +178,5 @@ p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, glo
                              global_means_vec)]
 adj_p_vals_perm_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
 adj_p_vals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
-serialize(joinpath(ser_data_dir, "bar_plots_dS_$TISSUE_TYPE.jls"), bar_plots)
-serialize_to_json(joinpath(ser_data_dir, "means_vecs_ds_$TISSUE_TYPE.json"), means_vecs)
+serialize(joinpath(ser_data_dir, "bar_plots_dS_$TISSUE_TYPE$(NEWDS ? "_newds" : "").jls"), bar_plots)
+serialize_to_json(joinpath(ser_data_dir, "means_vecs_ds_$TISSUE_TYPE$(NEWDS ? "_newds" : "").json"), means_vecs)
