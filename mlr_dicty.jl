@@ -10,6 +10,7 @@ using MultivariateStats
 using NaturalSort
 
 const ϵ = 0.001
+NEWDS = false #
 
 # Helper functions
 function normalize_expression(df::DataFrame)
@@ -52,7 +53,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "V" # "F" "M" "V" or "All"
+life_cycle = "All" # "F" "M" "V" or "All"
 
 gene_range = GeneRange(TSS(), TES(), -500, 500)
 
@@ -110,6 +111,11 @@ peak_data = binpeaks(peak_files, chrom_lengths_file)
 
 # Load paralog
 paralog_data = CSV.read(paralog_file, DataFrame)
+if NEWDS
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds.csv", DataFrame)
+    paralog_data.dS = paralog_data.New_dS
+    filter!(row -> !ismissing(row["dS"]), paralog_data)
+end
 
 # Filter the paralog data to just those that have expression data
 filter!(row -> row.GeneID in expr_data.GeneID && row.ParalogID in expr_data.GeneID, paralog_data)
@@ -214,7 +220,7 @@ full_df.H3K9me3[full_df.H3K9me3 .> 0] = logit_z(full_df.H3K9me3[full_df.H3K9me3 
 full_df.ATAC[full_df.ATAC .> 0] = logit_z(full_df.ATAC[full_df.ATAC .> 0])
 full_df.ParalogDist[isfinite.(full_df.ParalogDist)] = normalize_yj(full_df.ParalogDist[isfinite.(full_df.ParalogDist)])
 full_df.ParalogDist[isinf.(full_df.ParalogDist)] .= 0
-full_df.dS = normalize_yj(full_df.dS)
+full_df.dS = normalize_yj(Float64.(full_df.dS))
 
 # calculate the VIFs by calculating the correlation matrix and taking the diagonal of its inverse
 mat = Matrix(full_df[:,4:end])

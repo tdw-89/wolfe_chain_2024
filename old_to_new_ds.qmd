@@ -93,34 +93,39 @@ end
 
 ```{julia}
 ## Original (Ensembl 52-based) dN/dS values
-oldds = CSV.read("../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt", DataFrame) 
-select!(oldds, [1,15,3,4,5,6]) 
+human = true
+human_ds_old = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
+human_ds_new = "../../dicty_data/mammals/primates/h_sapiens/new_ds_humans.csv"
+dicty_ds_new = "../../dicty_data/new_ds_dicty.csv"
+dicty_ds_old = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
+dicty_fasta = "../../dicty_data/Dictyostelium_discoideum.dicty_2.7.pep.all.fa"
+human_fasta = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_115/Homo_sapiens.GRCh38.pep.all.fa"
+dicty_filtered = "../../dicty_data/filtered/paralog_ds_filt.csv"
+human_filtered = "../../dicty_data/filtered/human_paralog_info_filt.csv"
+old_ds_cols_dicty = [1,15,3,4,5,6]
+old_ds_cols_human = [1,11,5,6,7,8]
+old_ds = human ? human_ds_old : dicty_ds_old
+old_ds_cols = human ? old_ds_cols_human : old_ds_cols_dicty
+new_ds = human ? human_ds_new : dicty_ds_new
+oldds = CSV.read(old_ds, DataFrame)
+select!(oldds, old_ds_cols)
 format!(oldds)
 
 ## New YN00-based dN/dS values
-newds = CSV.read("/Users/thomaswolfe/Documents/dicty_data/new_ds_dicty.csv", DataFrame)
+newds = CSV.read(new_ds, DataFrame)
 recs = []
-open(FASTA.Reader, "/Users/thomaswolfe/Documents/temp_for_analysis/Dictyostelium_discoideum.dicty_2.7.pep.all.fa") do reader
+fasta_file = human ? human_fasta : dicty_fasta
+open(FASTA.Reader, fasta_file) do reader
     for rec in reader
         push!(recs, rec)
     end
 end
-oldds.Perc2 = map(parse_with_na, oldds.Perc2)
-
-## New YN00-based dN/dS values
-newds = CSV.read("/Users/thomaswolfe/Documents/dicty_data/new_ds_dicty.csv", DataFrame)
-recs = []
-open(FASTA.Reader, "/Users/thomaswolfe/Documents/temp_for_analysis/Dictyostelium_discoideum.dicty_2.7.pep.all.fa") do reader
-    for rec in reader
-        push!(recs, rec)
-    end
-end
-pids = map(rec -> split(description(rec))[1], recs)
-gids = map(rec -> split(split(description(rec))[4], ":")[2], recs)
+pids = map(rec -> split(split(description(rec))[1], ".")[1], recs)
+gids = map(rec -> split(split(split(description(rec))[4], ":")[2], ".")[1], recs)
 ptog=Dict(zip(pids,gids))
 gtop=Dict(zip(gids,pids))
-insertcols!(newds, "GeneID" => map(id -> ptog[id], newds.seq1))
-insertcols!(newds, "ParalogID" => map(id -> ptog[id], newds.seq2)) 
+insertcols!(newds, "GeneID" => map(id -> ptog[split(id, ".")[1]], newds.seq1))
+insertcols!(newds, "ParalogID" => map(id -> ptog[split(id, ".")[1]], newds.seq2)) 
 select!(newds, [31,32,3:30...,1,2])
 select!(newds, [1,2,13,15,3,4])
 format!(newds)
@@ -130,7 +135,7 @@ map_new = tomap(newds)
 map_old = tomap(oldds) 
 
 ## Original filtered pairs
-old_pairs = CSV.read("../../dicty_data/filtered/paralog_ds_filt.csv", DataFrame)
+old_pairs = CSV.read(human ? human_filtered : dicty_filtered, DataFrame)
 select!(old_pairs, [1,2,5,6,3,4])
 format!(old_pairs)
 ```
@@ -195,7 +200,7 @@ rankrank(dS_new, dS_old) |> plot
 ## Original filtered pairs
 ```{julia}
 #| label: fig-old-filtered-ds
-#| fig-cap: "Rank-rank plot of old vs. new dS values for
+#| fig-cap: "Rank-rank plot of old vs. new dS values"
 #| fig-subcap: "Original filtered pairs"
 old_filt_in_new = [
     [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
@@ -222,5 +227,5 @@ old_pairs.New_dS = map(
     row -> haskey(map_new, row.GeneID * "-" * row.ParalogID) ? map_new[row.GeneID * "-" * row.ParalogID][2] : missing, 
     eachrow(old_pairs)
 )
-CSV.write("../../dicty_data/old_pairs_with_new_ds.csv", old_pairs)
+CSV.write("../../dicty_data/old_pairs_with_new_ds$(human ? "_human" : "_dicty").csv", old_pairs)
 ```

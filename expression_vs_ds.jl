@@ -27,6 +27,8 @@ function ifany(v)
     end
 end
 
+NEWDS = true #
+
 # Plotting parameters
 font_family = "Times New Roman"
 y_axis_fmt_expr = attr(title = "log2(TPM + 0.5)", 
@@ -95,6 +97,12 @@ peak_data = binpeaks(peak_files, chrom_lengths_file)
 
 # Load paralog and singleton data
 paralog_data = CSV.read(paralog_file, DataFrame)
+if NEWDS
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds.csv", DataFrame)
+    paralog_data.dS = paralog_data.New_dS
+    filter!(row -> !ismissing(row["dS"]), paralog_data)
+    paralog_data.dS = Float64.(paralog_data.dS)
+end
 singleton_list = CSV.read(singleton_list_file, DataFrame)
 
 # Filter the singleton data to just those that have expression data (paralogs are already filtered)
@@ -147,7 +155,7 @@ singletons =  get(ref_genome, Vector(singleton_list.GeneID))
 singleton_expr_vals = [gene.rnas[1].expression[1] for gene in singletons if !ismissing(gene) && !isempty(gene.rnas)]
 expression_deciles = [paralog_data.AvgExpr[quantile_vals .== q] for q in sort(unique(quantile_vals))]
 
-open("../../dicty_data/julia_serialized/expression_deciles.json", "w") do file
+open("../../dicty_data/julia_serialized/expression_deciles$(NEWDS ? "_new_ds" : "").json", "w") do file
     JSON.print(file, Dict([["$i" => decile for (i,decile) in enumerate(expression_deciles)]...; "singleton" => singleton_expr_vals]))
 end
 
