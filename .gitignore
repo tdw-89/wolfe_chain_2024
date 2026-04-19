@@ -10,3 +10,4 @@ temp_data/
 /.quarto/
 **/*.quarto_ipynb
 old_to_new_ds_files/
+*.html

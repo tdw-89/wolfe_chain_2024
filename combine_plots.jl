@@ -49,6 +49,7 @@ end
 
 save_plots = true
 box_plots = true
+NEWDS = true
 tissue_type = "All" # Options: "All", "V", "M", "F"
 x_tick_font = attr(family="Times New Roman", size=26)
 y_tick_font = attr(family="Times New Roman", size=36)
@@ -70,16 +71,16 @@ tes_expr_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_expr
 bar_expr = deserialize(joinpath(ser_data_dir, "bar_plots_expr_$tissue_type.jls"))
 
 # dS enrichment plots:
-tss_dS_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_$tissue_type.jls"))
-body_dS_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS_$tissue_type.jls"))
-tes_dS_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_$tissue_type.jls"))
-bar_dS = deserialize(joinpath(ser_data_dir, "bar_plots_dS_$tissue_type.jls"))
+tss_dS_enrich = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_$tissue_type$(NEWDS ? "_newds" : "").jls"))
+body_dS_enrich = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS_$tissue_type$(NEWDS ? "_newds" : "").jls"))
+tes_dS_enrich_ends = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_$tissue_type$(NEWDS ? "_newds" : "").jls"))
+bar_dS = deserialize(joinpath(ser_data_dir, "bar_plots_dS_$tissue_type$(NEWDS ? "_newds" : "").jls"))
 tss_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tss_enrich_plots_dS.jls"))
 body_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_body_enrich_plots_dS.jls"))
 tes_dS_enrich_human = deserialize(joinpath(ser_data_dir, "human_tes_enrich_plots_dS.jls"))
 bar_dS_human = deserialize(joinpath(ser_data_dir, "human_bar_plots_dS.jls"))
 
-sample_names = tissue_type == "V" ? ["H3K27ac", "H3K4me3", "H3K9me3"] : ["H3K4me3", "H3K27ac", "H3K9me3", "ATAC"]
+sample_names = tissue_type == "V" ? ["H3K27ac", "H3K4me3", "H3K9me3"] : ["H3K27ac", "H3K4me3", "H3K9me3", "ATAC"]
 for i in eachindex(sample_names)
     fig = make_subplots(
         rows=4, cols=3,
@@ -253,7 +254,7 @@ for i in eachindex(sample_names)
     remove_heatmap_colorbars!(fig)
     
     if save_plots
-        savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS_$tissue_type.html"))
+        savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS_$tissue_type$(NEWDS ? "_newds" : "").html"))
     
     end
     display(fig)

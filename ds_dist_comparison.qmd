@@ -2,18 +2,20 @@
 engine: julia
 julia:
   exeflags: ["--project=@."]
-title: "dN/dS comparison (Dictyostelium)"
+title: "dN/dS comparison"
 author: "Tom Wolfe"
 date: "4/11/2026"
 format:
   html:
     toc: true
+    embed-resources: true
 theme: sandstone
-execute: 
-  enabled: true
+execute:
+  echo: false
 ---
 
 ```{julia}
+#| output: false
 #| echo: false
 
 # Libraries
@@ -89,11 +91,20 @@ function format!(df::DataFrame)
 end
 ```
 
-## The Data
+```{julia}
+#| output: asis
+human = true # Set to false for dicty data
+println(
+"""
+# dN/dS estimation comparison for $(human ? "human" : "dicty") paralogs
+""")
+```
 
 ```{julia}
+#| output: false
+#| echo: false
+
 ## Original (Ensembl 52-based) dN/dS values
-human = true
 human_ds_old = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
 human_ds_new = "../../dicty_data/mammals/primates/h_sapiens/new_ds_humans.csv"
 dicty_ds_new = "../../dicty_data/new_ds_dicty.csv"
@@ -125,43 +136,37 @@ gids = map(rec -> split(split(split(description(rec))[4], ":")[2], ".")[1], recs
 ptog=Dict(zip(pids,gids))
 gtop=Dict(zip(gids,pids))
 insertcols!(newds, "GeneID" => map(id -> ptog[split(id, ".")[1]], newds.seq1))
-insertcols!(newds, "ParalogID" => map(id -> ptog[split(id, ".")[1]], newds.seq2)) 
+insertcols!(newds, "ParalogID" => map(id -> ptog[split(id, ".")[1]], newds.seq2))
 select!(newds, [31,32,3:30...,1,2])
 select!(newds, [1,2,13,15,3,4])
 format!(newds)
 
 ## Create pair-order agnostic lookup tables for old and new dN/dS values
-map_new = tomap(newds) 
-map_old = tomap(oldds) 
+map_new = tomap(newds)
+map_old = tomap(oldds)
 
 ## Original filtered pairs
 old_pairs = CSV.read(human ? human_filtered : dicty_filtered, DataFrame)
 select!(old_pairs, [1,2,5,6,3,4])
-format!(old_pairs)
+format!(old_pairs);
 ```
 
-## Old (Ensembl 52-based) dS values
-
+## Old (Ensembl 52-based) dS values vs. new (YN00-based) dS values
 ```{julia}
-#| label: fig-old-ds-hist
-#| fig-cap: "Distribution of old (Ensembl 52-based) dS values"
-plt = histogram(
-    x = oldds.dS |> skipmissing |> collect
+#| output: asis
+#| echo: false
+h1 = histogram(
+    x = oldds.dS |> skipmissing |> filter(x -> x <=10) |> collect,
+    histnorm="percent",
+    name = "Old dS"
 )
-layout = Layout(title="Distribution of old (Ensembl 52-based) dS values", xaxis_title="dS", yaxis_title="Count")
-plot(plt, layout)
-```
-
-## New (YN00-based) dS values
-
-```{julia}
-#| label: fig-new-ds-hist
-#| fig-cap: "Distribution of new (YN00-based) dS values"
-plt = histogram(
-    x = newds.dS |> skipmissing |> collect
+h2 = histogram(
+    x = newds.dS |> skipmissing |> filter(x -> x <=1) |> collect,
+    histnorm="percent",
+    name = "New dS"
 )
-layout = Layout(title="Distribution of new (YN00-based) dS values", xaxis_title="dS", yaxis_title="Count")
-plot(plt, layout)
+plot([h1, h2], Layout(title="Distribution of old vs. new dS values$(human ? " (human)" : " (dicty)")", xaxis_title="dS", yaxis_title="Count"))
+
 ```
 ## Spearman and Pearson correlation of old vs. new dS values
 ### All new values from pairs matching old pairs
@@ -172,13 +177,13 @@ old_in_new = [
     for row in eachrow(oldds) 
     if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
 ]
-dS_new = [s[1][2][2] for s in old_in_new] 
+dS_new = [s[1][2][2] for s in old_in_new]
 dS_old = [s[2][2][2] for s in old_in_new]
 dN_new = [s[1][2][1] for s in old_in_new] 
 dN_old = [s[2][2][1] for s in old_in_new]
 ds_cors = getcors(dS_new, dS_old)
-ds_corl = getcorl(dS_new, dS_old) 
-dn_cors = getcors(dN_new, dN_old) 
+ds_corl = getcorl(dS_new, dS_old)
+dn_cors = getcors(dN_new, dN_old)
 dn_corl = getcorl(dN_new, dN_old)
 println("""
 | Correlation | Statistic | Value |
@@ -208,10 +213,10 @@ old_filt_in_new = [
     if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
 ]
 
-dS_new_filt = [s[1][2][2] for s in old_filt_in_new] 
+dS_new_filt = [s[1][2][2] for s in old_filt_in_new]
 dS_old_filt = [s[2][2][2] for s in old_filt_in_new]
 ds_cors_filt = getcors(dS_new_filt, dS_old_filt)
-ds_corl_filt = getcorl(dS_new_filt, dS_old_filt) 
+ds_corl_filt = getcorl(dS_new_filt, dS_old_filt)
 println("""| Correlation | Statistic | Value |
 |-|-|-|
 | ρ | dS | $ds_cors_filt |
@@ -222,10 +227,12 @@ rankrank(dS_new_filt, dS_old_filt) |> plot
 ```
 
 ```{julia}
+#| echo: false
+
 ## Save the old pairs with new dN/dS values for future reference
 old_pairs.New_dS = map(
     row -> haskey(map_new, row.GeneID * "-" * row.ParalogID) ? map_new[row.GeneID * "-" * row.ParalogID][2] : missing, 
     eachrow(old_pairs)
 )
-CSV.write("../../dicty_data/old_pairs_with_new_ds$(human ? "_human" : "_dicty").csv", old_pairs)
+CSV.write("../../dicty_data/old_pairs_with_new_ds$(human ? "_human" : "_dicty").csv", old_pairs);
 ```

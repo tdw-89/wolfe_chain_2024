@@ -10,7 +10,7 @@ using MultivariateStats
 using NaturalSort
 
 const ϵ = 0.001
-NEWDS = false #
+NEWDS = true #
 
 # Helper functions
 function normalize_expression(df::DataFrame)
@@ -289,8 +289,8 @@ mlr_table.pvalue_adj = fill(NaN, nrow(mlr_table))
 mlr_table.pvalue_adj[valid_p_vals] = adjust(mlr_table[!, :pvalue][valid_p_vals], BenjaminiHochberg())
 
 sort!(mlr_table, :pvalue_adj)
-CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle).csv"), mlr_table)
-stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle).txt"), "w")
+CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle)_$(NEWDS ? "new_ds" : "old_ds").csv"), mlr_table)
+stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle)_$(NEWDS ? "new_ds" : "old_ds").txt"), "w")
 write(stats_file, "r²: $r_squared\n\nVIF Values:\n")
 for (i, col_name) in enumerate(names(full_df)[4:end])
     write(stats_file, "$col_name: $(vif_values[i])\n")

@@ -27,7 +27,7 @@ function ifany(v)
     end
 end
 
-NEWDS = true #
+NEWDS = false #
 
 # Plotting parameters
 font_family = "Times New Roman"
@@ -163,7 +163,7 @@ kw_test = KruskalWallisTest(expression_deciles...)
 
 # Get the significance of the overall difference
 dup_vs_single_test = MannWhitneyUTest(singleton_expr_vals, paralog_data.AvgExpr)
-dup_vs_single = pvalue()
+dup_vs_single = pvalue(dup_vs_single_test)
 
 # Plot expression vs dS
 display(plot([box_plt(paralog_data.AvgExpr[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], merge(Layout(title="Expression vs. 𝑑𝑆"), box_layout_expr)))
@@ -172,6 +172,7 @@ display(plot(scatter(x=rollmean(paralog_data[:,"dS"], 100), y=rollmean(paralog_d
 # Plot expression difference vs dS
 display(plot([box_plt(paralog_data.Diff[quantile_vals .== q], "$q") for q in sort(unique(quantile_vals), rev=false)], merge(Layout(title="Expression Difference"), box_layout_diff)))
 display(plot(scatter(x=rollmean(paralog_data[:,"dS"], 100), y=rollmean(paralog_data.Diff, 100), mode="markers", text=paralog_data.GeneID, marker_size=5), Layout(xaxis=attr(title="dS"), yaxis=attr(title="Expression difference"))))
+CSV.write("../../dicty_data/filtered/paralog_expr_ds$(NEWDS ? "_new_ds" : "").csv", paralog_data)
 
 df_adj = findall(row -> row.AvgExprAdj != Inf, eachrow(paralog_data))
 quantile_vals_adj = quantile_vals[df_adj]

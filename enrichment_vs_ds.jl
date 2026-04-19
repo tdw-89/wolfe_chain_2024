@@ -1,7 +1,6 @@
 include("prelude.jl")
 
 using .EnrichmentUtils
-
 using Serialization
 using JSON
 using Random

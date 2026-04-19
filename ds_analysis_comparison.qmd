@@ -1,0 +1,337 @@
+---
+engine: julia
+julia:
+  exeflags: ["--project=@."]
+title: "dS comparison"
+author: "Tom Wolfe"
+date: "4/11/2026"
+format:
+  html:
+    toc: true
+    embed-resources: true
+theme: sandstone
+execute:
+  echo: false
+---
+
+# Enrichment heatmaps
+```{julia}
+#| output: false
+#| echo: false
+
+# Libraries
+include("prelude.jl")
+using CategoricalArrays
+using JSON
+using PlotlyJS
+using Printf
+using Serialization
+
+# Serialized data
+data_dir = "../../dicty_data/"
+ser_data_dir = joinpath(data_dir, "julia_serialized")
+tss_dS_enrich_newds = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_All_newds.jls"))
+body_dS_enrich_newds = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS_All_newds.jls"))
+tes_dS_enrich_newds = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_All_newds.jls"))
+bar_dS_newds = deserialize(joinpath(ser_data_dir, "bar_plots_dS_All_newds.jls"))
+tss_dS_enrich_oldds = deserialize(joinpath(ser_data_dir, "tss_enrich_plots_dS_All.jls"))
+body_dS_enrich_oldds = deserialize(joinpath(ser_data_dir, "body_enrich_plots_dS_All.jls"))
+tes_dS_enrich_oldds = deserialize(joinpath(ser_data_dir, "tes_enrich_plots_dS_All.jls"))
+bar_dS_oldds = deserialize(joinpath(ser_data_dir, "bar_plots_dS_All.jls"))
+expr_dec_oldds = JSON.parsefile(joinpath(ser_data_dir, "expression_deciles.json"))
+expr_dec_newds = JSON.parsefile(joinpath(ser_data_dir, "expression_deciles_new_ds.json"))
+expr_pairs_oldds = CSV.read(joinpath(data_dir, "filtered/paralog_expr_ds.csv"), DataFrame)
+expr_pairs_newds = CSV.read(joinpath(data_dir, "filtered/paralog_expr_ds_new_ds.csv"), DataFrame)
+
+# MLR results
+mlr_old = CSV.read(joinpath(data_dir, "mlr_results_All_old_ds.csv"), DataFrame)
+mlr_new = CSV.read(joinpath(data_dir, "mlr_results_All_new_ds.csv"), DataFrame)
+mlr_stats_old = readlines(joinpath(data_dir, "mlr_stats_All_old_ds.txt"))
+mlr_stats_new = readlines(joinpath(data_dir, "mlr_stats_All_new_ds.txt"))
+
+# Plot parameters
+const x_tick_font = attr(family="Times New Roman", size=26)
+const y_tick_font = attr(family="Times New Roman", size=36)
+const title_font_size = 30
+const vertical_spacing = 0.025
+const x1_vals = [collect(-400:100:-100)...]
+const x2_vals = [collect(20:20:80)...]
+const x3_vals = [collect(100:100:400)...]
+
+# Helper functions
+function base_fig()
+    return make_subplots(
+        rows=2, cols=3,
+        column_widths=[0.5*0.75, 1*0.75, 0.5*0.75],
+        row_heights=[0.50, 0.50],
+        horizontal_spacing=0.002,
+        vertical_spacing=vertical_spacing,
+        specs=[Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");
+               Spec(kind="heatmap") Spec(kind="heatmap") Spec(kind="heatmap");]
+    )
+end
+function add_row(
+    fig, 
+    tss_plts, 
+    body_plts, 
+    tes_plts, 
+    sample_idx, 
+    top_row
+    )
+    row_idx = top_row ? 1 : 2
+    add_trace!(fig, tss_plts[1][sample_idx], row=row_idx, col=1)
+    add_trace!(fig, body_plts[1][sample_idx], row=row_idx, col=2)
+    add_trace!(fig, tes_plts[1][sample_idx], row=row_idx, col=3)
+end
+function relayout_top!(fig)
+    relayout!(fig, yaxis=attr(tickfont=y_tick_font,
+                              title="log(TPM + 0.5)",
+                              titlefont=attr(family = "Times New Roman",
+                              size=title_font_size)),
+                xaxis=attr(range=[-500,0],
+                            showticklabels=false),
+                yaxis2=attr(showticklabels=false),
+                xaxis2=attr(showticklabels=false),
+                yaxis3=attr(showticklabels=false),
+                xaxis3=attr(range=[0,500], 
+                            showticklabels=false))
+end
+
+function relayout_bottom!(fig)
+    relayout!(fig, 
+                yaxis4=attr(tickfont=y_tick_font, 
+                               title="𝑑𝑆", 
+                               titlefont=attr(family = "Times New Roman", 
+                               size=title_font_size, 
+                               weight="bold")),
+                xaxis4=attr(range=[-500,0], 
+                            tickmode="array", 
+                            tickvals=x1_vals, 
+                            ticktext=[string.(x1_vals)...], 
+                            tickfont=x_tick_font),
+                yaxis5=attr(showticklabels=false),
+                xaxis5=attr(tickmode="array", 
+                            tickvals=x2_vals, 
+                            ticktext=string.(x2_vals) .* "%", 
+                            tickfont=x_tick_font),
+                yaxis6=attr(showticklabels=false),
+                xaxis6=attr(range=[0,500], 
+                            tickmode="array", 
+                            tickvals=x3_vals, 
+                            ticktext=["+" .* string.(x3_vals)...], 
+                            tickfont=x_tick_font))
+end
+
+function remove_heatmap_colorbars!(fig)
+    # PlotlyJS sometimes wraps plots in `SyncPlot` for display; the underlying plot is in `.plot`.
+    plt = hasproperty(fig, :plot) ? getproperty(fig, :plot) : fig
+
+    # Hide per-trace colorbars.
+    if hasproperty(plt, :data)
+        for tr in plt.data
+            ty = try
+                tr[:type]
+            catch
+                nothing
+            end
+            if ty == "heatmap"
+                tr[:showscale] = false
+            end
+        end
+    end
+
+    # Hide shared coloraxis colorbars too (coloraxis, coloraxis2, ...).
+    if hasproperty(plt, :layout)
+        if haskey(plt.layout, :coloraxis)
+            plt.layout[:coloraxis][:showscale] = false
+        end
+        try
+            for k in keys(plt.layout)
+                if startswith(String(k), "coloraxis")
+                    ca = plt.layout[k]
+                    try
+                        ca[:showscale] = false
+                    catch
+                    end
+                end
+            end
+        catch
+        end
+    end
+
+    return fig
+end
+
+function build_fig(tss_plts, body_plts, tes_plts, sample_idx)
+    fig = base_fig()
+    add_row(
+        fig,
+        tss_plts,
+        body_plts,
+        tes_plts,
+        sample_idx,
+        true
+    )
+    relayout_top!(fig)
+    add_row(
+        fig,
+        tss_dS_enrich_newds,
+        body_dS_enrich_newds,
+        tes_dS_enrich_newds,
+        sample_idx,
+        false
+    )
+    relayout_bottom!(fig)
+    relayout!(
+        fig,
+        showlegend=false,
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=600,
+        width=1200
+    )
+    remove_heatmap_colorbars!(fig)
+    return fig
+end
+
+function build_table(df)
+    df = sort(df, :Predictor)
+    table = "| Predictor | Coefficient | p-value (adj.) |\n|-|-|-|-|-|"
+    for row in eachrow(df)
+        table *= "\n| $(row.Predictor) | $(row.Coef) | $(row.pvalue_adj) |"
+    end
+    return table
+end
+
+function build_box_plts_json(expr_deciles1, expr_deciles2, name1, name2)
+    deciles = [string(i) for i in 1:10] 
+    plts = GenericTrace[]
+    for decile in deciles
+        plt1 = box(y=expr_deciles1[decile], name="$decile ($name1)", marker_color="blue", line=attr(color="blue"), fillcolor="#596fff")
+        plt2 = box(y=expr_deciles2[decile], name="$decile ($name2)", marker_color="crimson", line=attr(color="crimson"), fillcolor="#a72020")
+        push!(plts, plt1)
+        push!(plts, plt2)
+    end
+    return plts
+end
+
+function build_box_plts_df(expr_df1, expr_df2, name1, name2)
+    deciles1 = levelcode.(cut(expr_df1.dS, 10))
+    deciles2 = levelcode.(cut(expr_df2.dS, 10))
+    plts = GenericTrace[]
+    for decile in 1:10
+        plt1 = box(y=expr_pairs_oldds.Diff[deciles1 .== decile], name="Decile $decile ($name1)", marker_color="blue", line=attr(color="blue"), fillcolor="#596fff")
+        plt2 = box(y=expr_pairs_newds.Diff[deciles2 .== decile], name="Decile $decile ($name2)", marker_color="crimson", line=attr(color="crimson"), fillcolor="#a72020")
+        push!(plts, plt1)
+        push!(plts, plt2)
+    end
+    return plts
+end
+
+```
+## H3K27ac
+```{julia}
+#| output: asis
+#| echo: false
+#| out-height: "600px"
+#| out-width: "1200px"
+fig_h3k27ac = build_fig(tss_dS_enrich_oldds, body_dS_enrich_oldds, tes_dS_enrich_oldds, 1)
+fig_h3k27ac.plot
+```
+## H3K4me3 
+```{julia}
+#| output: asis
+#| echo: false
+#| out-height: "600px"
+#| out-width: "1200px"
+fig_h3k4me3 = build_fig(tss_dS_enrich_oldds, body_dS_enrich_oldds, tes_dS_enrich_oldds, 2)
+fig_h3k4me3.plot
+```
+## H3K9me3
+```{julia}
+#| output: asis
+#| echo: false
+#| out-height: "600px"
+#| out-width: "1200px"
+fig_h3k9me3 = build_fig(tss_dS_enrich_oldds, body_dS_enrich_oldds, tes_dS_enrich_oldds, 3)
+fig_h3k9me3.plot
+```
+## ATAC
+```{julia}
+#| output: asis
+#| echo: false
+#| out-height: "600px"
+#| out-width: "1200px"
+fig_atac = build_fig(tss_dS_enrich_oldds, body_dS_enrich_oldds, tes_dS_enrich_oldds, 4)
+fig_atac.plot
+```
+
+# GLM
+## Model comparison
+```{julia}
+#| output: asis
+#| echo: false
+
+println("""| Predictor | Coefficient (Old) | Coefficient (New) | p-value (adj., Old) | p-value (adj., New) |
+|-|-|-|-|-|""")
+for i in 1:nrow(mlr_old)
+    @printf("| %s | %.2f | %.2f | %.2f | %.2f |\n", mlr_old.Predictor[i], mlr_old.Coef[i], mlr_new.Coef[i], mlr_old.pvalue_adj[i], mlr_new.pvalue_adj[i])
+end
+```
+## R² values for old vs. new dS models
+```{julia}
+#| output: asis
+#| echo: false
+
+r2_old = split(mlr_stats_old[1], ":")[2] |> strip
+r2_new = split(mlr_stats_new[1], ":")[2] |> strip
+
+println("""| Model | R² |
+|-|-|
+| Old dS | $r2_old |
+| New dS | $r2_new |
+""")
+```
+## VIF values for old vs. new dS models
+```{julia}
+#| output: asis
+#| echo: false
+
+# Rempve the headers
+mlr_stats_old = mlr_stats_old[4:end]
+mlr_stats_new = mlr_stats_new[4:end]
+
+# Extract VIF values
+vifs_old = map(mlr_stats_old) do line
+    parts = split(line, ":")
+    var = strip(parts[1])
+    vif = strip(parts[2])
+    return (var => vif)
+end
+vifs_new = map(mlr_stats_new) do line
+    parts = split(line, ":")
+    var = strip(parts[1])
+    vif = strip(parts[2])
+    return (var => vif)
+end
+println("""| Predictor | VIF (Old dS) | VIF (New dS) |
+|-|-|-|
+$(join(map(1:length(vifs_old)) do i
+    var = vifs_old[i][1]
+    vif_old = vifs_old[i][2]
+    vif_new = vifs_new[i][2]
+    "| $var | $vif_old | $vif_new |"
+end, "\n"))
+""")
+```
+
+## Gene expression comparison
+### Expression deciles
+```{julia}
+boxes = build_box_plts_json(expr_dec_oldds, expr_dec_newds, "Old dS", "New dS")
+plot(boxes, Layout(title="Gene expression deciles", yaxis_title="dS", xaxis_title=" (<-lower) Expression decile (higher->)", showlegend=false))
+```
+### Expression difference vs. dS
+```{julia}
+boxes = build_box_plts_df(expr_pairs_oldds, expr_pairs_newds, "Old dS", "New dS")
+plot(boxes, Layout(title="Expression difference vs. dS", yaxis_title="Expression difference", xaxis_title=" (<-lower) dS decile (higher->)", showlegend=false))
+```
