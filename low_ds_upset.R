@@ -13,15 +13,15 @@ set_names <- c("H3K9me3",
                "ATAC")
 names(low_ds_df) <- c("Gene ID", set_names, "Expression")
 low_ds_df[, 2:5] <- lapply(low_ds_df[, 2:5], function(col) {
-  return(as.integer(factor(col)) - 1)
+  as.integer(factor(col)) - 1
 })
 
-h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 == T])
-non_h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 != T])
-wilcox.test(low_ds_df$Expression[low_ds_df$H3K9me3 == T], 
-            low_ds_df$Expression[low_ds_df$H3K9me3 != T])
+h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 == TRUE])
+non_h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 != TRUE])
+wilcox.test(low_ds_df$Expression[low_ds_df$H3K9me3 == TRUE], 
+            low_ds_df$Expression[low_ds_df$H3K9me3 != TRUE])
 
-medExpr <- generator(function() {
+med_expr <- generator(function() {
   for (x in c(
     non_h3k9me3_med,
     non_h3k9me3_med,
@@ -40,10 +40,9 @@ medExpr <- generator(function() {
     yield(x)
   }
 })
-f <- medExpr()
+f <- med_expr()
 
 # Create the upset plot theme
-    # Text
 plt_theme <- upset_default_themes()
 plt_theme$intersections_matrix[[1]]$text$size <- 18
 plt_theme$`Intersection size`[[1]]$text$size <- 18
@@ -52,16 +51,16 @@ plt_theme$`Intersection size`[[1]]$axis.text.x$size <- 18
 plt_theme$`Intersection size`[[1]]$axis.text.y$size <- 18
 plt_theme$overall_sizes[[1]]$text$size <- 18
 plt_theme$default[[1]]$text$size <- 18
-  
+
 upset(low_ds_df,
       set_names,
       annotations = list(
         "Expression" = ggplot(
-            mapping=aes(
-              x = intersection, 
-              y = Expression
-            )
-          ) +
+          mapping=aes(
+            x = intersection,
+            y = Expression
+          )
+        ) +
           geom_boxplot(lwd=1.08) +
           stat_summary(
             fun = NULL,

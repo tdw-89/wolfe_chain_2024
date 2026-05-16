@@ -21,7 +21,8 @@ external_deps = [
     "TranscodingStreams", "DataStructures", "Graphs", "MetaGraphs", "EzXML",
     "RollingFunctions", "DSP", "HypothesisTests", "MultipleTesting", "FASTX",
     "FreqTables", "Loess", "CodecZlib", "BGZFStreams",
-    "FixedPointNumbers", "GLM", "Automa", "JSON", "Distributions", "StatsModels"
+    "FixedPointNumbers", "GLM", "Automa", "JSON", "Distributions", "StatsModels",
+    "OhMyThreads", "GaussianMixtures", "LanguageServer"
 ]
 Pkg.add(external_deps)
 println("All packages installed")

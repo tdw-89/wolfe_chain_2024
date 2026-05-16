@@ -3,6 +3,8 @@ STEP 2: Get a list of TE IDs from the DB reference and those overlapping a predi
 =#
 include("../prelude.jl")
 
+const TE_OVERLAP_CUTOFF = 80
+
 function merge_overlapping_intervals(ranges::Vector{Tuple{Any, Any}})
     if isempty(ranges)
         return Tuple{Int, Int}[]
@@ -33,10 +35,11 @@ end
 
 
 function overlap_lens(gene::Gene)
-    gene_bit_arr = BitArray(undef, gene.gene_end - gene.gene_start + 1)
+    ba(s::Int,e::Int) = zeros(Bool, e - s + 1) |> BitArray
+    gene_bit_arr = ba(gene.gene_start, gene.gene_end)
     exon_ranges = [(exon.exon_start, exon.exon_end) for exon in gene.exons]
     exons_ranges_merged = merge_overlapping_intervals(exon_ranges)
-    exon_bit_arrs = [BitArray(undef, exon_range[2] - exon_range[1] + 1) for exon_range in exons_ranges_merged]
+    exon_bit_arrs = [ba(exon_range[1], exon_range[2]) for exon_range in exons_ranges_merged]
     for repeat_elem in gene.scaffold.repeats
         if GenomeTypes.hasoverlap(
             repeat_elem.repeat_start,
@@ -75,7 +78,6 @@ end
 using CSV
 using DataFrames
 using SparseArrays
-
 using .RepeatUtils
 
 cd(@__DIR__)
@@ -85,7 +87,7 @@ gff_source = "../../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_di
 chrom_lengths_file = "../../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 
 # Predicted TE files (Ensembl 52):
-tes_ensembl = "../../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
+tes_ensembl = "../../../dicty_data/rm_genomes/ensembl_52/full/results_v3/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
 
 # mapped TEs file:
 mapped_tes_file = "ensembl_te_ids_full.tsv"
@@ -103,7 +105,6 @@ convert_to_repeats!(
     te_df_ensembl
     ; allow_missing_scaffolds=false)
 
-
 # Get genes that overlap with predicted TEs:
 te_genes = [findoverlappinggenes(repeat_elem) for repeat_elem in ref_genome.repeats]
 overlapping_ids = [te_genes[i][1] for i in eachindex(te_genes) if !ismissing(te_genes[i])]
@@ -111,38 +112,46 @@ overlapping_ids = reduce(vcat, overlapping_ids)
 overlapping_ids = unique(overlapping_ids)
 
 overlap_perc_df = DataFrame(
-    :OverlappingIDs => overlapping_ids,
+    :GeneID => overlapping_ids,
     :TotalOverlapPerc => zeros(Float64, length(overlapping_ids)),
-    :ExonOverlapPerc => zeros(Float64, length(overlapping_ids))
+    :ExonOverlapPerc => zeros(Float64, length(overlapping_ids)),
+    :IntronOverlapPerc => zeros(Float64, length(overlapping_ids))
 )
 for (i, gene_id) in enumerate(overlapping_ids)
     gene = ref_genome.genes[2][findfirst(g -> g.id == gene_id, ref_genome.genes[2])]
     total_perc, exon_perc = overlap_lens(gene)
     overlap_perc_df[i, :TotalOverlapPerc] = total_perc
     overlap_perc_df[i, :ExonOverlapPerc] = exon_perc
+    overlap_perc_df[i, :IntronOverlapPerc] = max(total_perc - (total_perc * exon_perc / 100), 0.0)
 end
 
 sort!(overlap_perc_df, :ExonOverlapPerc)
+CSV.write("../../../dicty_data/te_overlap_perc_dicty.csv", overlap_perc_df)
+overlapping_ids_filt = filter(row -> row.ExonOverlapPerc >= TE_OVERLAP_CUTOFF, overlap_perc_df).GeneID
 
 # Merge the overlapping IDs with the TE IDs lifted from the dictybase genome:
-all_te_IDs = union(mapped_tes.GeneID, overlapping_ids)
+all_te_IDs = union(mapped_tes.GeneID, overlapping_ids_filt)
 CSV.write("ensembl_te_ids_with_predicted.tsv", DataFrame(GeneID=all_te_IDs))
+labeled_df = DataFrame(GeneID=mapped_tes.GeneID, Source="dictyBase")
+labeled_df = vcat(labeled_df, DataFrame(GeneID=overlapping_ids_filt, Source="Predicted"))
+CSV.write("ensembl_te_ids_with_source.tsv", labeled_df)
 
 # Total genome coverage
 #
-#   Combined: (2475856 / 34134454) = 7.2532
-#   Class I: (2236611 / 34134454) = 6.5523
-#   Class II: (239245 / 34134454) = 0.7009
-te_type = "All"
-if te_type == "I"
-    filter!(row -> !contains(row.Type, "DNA"), te_df_ensembl)
-elseif te_type == "II"
-    filter!(row -> contains(row.Type, "DNA"), te_df_ensembl)
+#   Combined: (4205255 / 34134454) = 12.32
+#   Class I: (3746292 / 34134454) = 10.97
+#   Class II: (458963 / 34134454) = 1.34
+for te_type in ["All", "I", "II"]
+    te_df_ensembl_copy = deepcopy(te_df_ensembl)
+    if te_type == "I"
+        filter!(row -> !contains(row.Type, "DNA"), te_df_ensembl_copy)
+    elseif te_type == "II"
+        filter!(row -> contains(row.Type, "DNA"), te_df_ensembl_copy)
+    end
+    genome_size = values(ref_genome.scaffolds) |>
+        collect |> 
+        sv -> map(s -> s.scaffold_end - s.scaffold_start + 1, sv) |> 
+        sum
+
+    sum([te.End - te.Start + 1 for te in eachrow(te_df_ensembl_copy)]) / genome_size * 100.0 |> println
 end
-
-genome_size = values(ref_genome.scaffolds) |>
-    collect |> 
-    sv -> map(s -> s.scaffold_end - s.scaffold_start + 1, sv) |> 
-    sum
-sum([te.End - te.Start + 1 for te in eachrow(te_df_ensembl)]) / genome_size * 100.0
-

@@ -6,7 +6,7 @@ using Serialization
 using JSON
 using GLM
 
-TISSUE_TYPE = "F"  # Options: "All", "V", "M", "F"
+TISSUE_TYPE = ARGS[1]  # Options: "All", "V", "M", "F"
 
 function get_sample_inds(tissue_type)
     if tissue_type == "All"

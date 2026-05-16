@@ -5,8 +5,8 @@ using Serialization
 using JSON
 using Random
 
-TISSUE_TYPE = "All"  # Options: "All", "V", "M", "F"
-NEWDS = true #
+TISSUE_TYPE = ARGS[1]  # Options: "All", "V", "M", "F"
+NEWDS = false #
 
 function get_sample_inds(tissue_type)
     if tissue_type == "All"

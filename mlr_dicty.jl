@@ -10,7 +10,7 @@ using MultivariateStats
 using NaturalSort
 
 const ϵ = 0.001
-NEWDS = true #
+NEWDS = false #
 
 # Helper functions
 function normalize_expression(df::DataFrame)

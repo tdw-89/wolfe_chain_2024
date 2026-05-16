@@ -18,11 +18,6 @@ function reverse_complement(seq::String)
     return join([comp_dict[base] for base in reverse(seq)])
 end
 
-# Custom lib src:
-# include("./custom_lib/load_gff.jl")
-# include("./custom_lib/genomic_data.jl")
-# include("./custom_lib/misc_utils.jl")
-
 # Genomic data
 dictybase_cds = "../../../dicty_data/AX4/genome_ver_2_7/fastas/dicty_primary_cds.fa"
 ensembl_cds = "../../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.cds.all.fa"

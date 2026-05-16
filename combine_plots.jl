@@ -49,8 +49,8 @@ end
 
 save_plots = true
 box_plots = true
-NEWDS = true
-tissue_type = "All" # Options: "All", "V", "M", "F"
+NEWDS = false
+tissue_type = ARGS[1] # Options: "All", "V", "M", "F"
 x_tick_font = attr(family="Times New Roman", size=26)
 y_tick_font = attr(family="Times New Roman", size=36)
 title_font_size = 30
@@ -256,8 +256,9 @@ for i in eachindex(sample_names)
     if save_plots
         savefig(fig, joinpath(plot_save_dir, "combined_plot_$(sample_names[i])_dS_$tissue_type$(NEWDS ? "_newds" : "").html"))
     
+    else
+        display(fig)
     end
-    display(fig)
 end
 
 #________________________________________________________________________________________
@@ -364,6 +365,6 @@ remove_heatmap_colorbars!(fig_h)
 
 if save_plots
     savefig(fig_h, joinpath(plot_save_dir, "combined_plot_H3K9me3_dS_human.html"))
-
+else
+    display(fig_h)
 end
-display(fig_h)

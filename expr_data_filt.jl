@@ -2,7 +2,7 @@
 include("prelude.jl")
 
 # Filtering parameters
-keep_tes = true
+keep_tes = false
 
 # Gene blacklist files
 blacklist_file = "./blacklists/cds_blacklist_full.tsv"

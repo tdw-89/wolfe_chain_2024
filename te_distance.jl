@@ -1,12 +1,11 @@
 include("prelude.jl")
-
 using FastaIO
-
 using .RepeatUtils
 
 # Files:
 te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
-pred_te_coord_file = "../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
+pred_te_coord_file = "../../dicty_data/rm_genomes/ensembl_52/full/results_v3/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
+te_overlap_file = "../../dicty_data/te_overlap_perc_dicty.csv"
 gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 ensembl_cds_id_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/cds_ids.txt"
@@ -38,10 +37,33 @@ pred_te_df = CSV.read(pred_te_coord_file, DataFrame)
 # Add the predicted TEs to the reference genome object:
 convert_to_repeats!(ref_genome, pred_te_df, allow_missing_scaffolds=true)
 
+# Load the TE overlap data:
+te_overlap = CSV.read(te_overlap_file, DataFrame)
+@assert (te_overlap.GeneID |> unique |> length) == (te_overlap |> nrow) "Non-unique GeneIDs in overlap df!"
+
 # Convert TE genes to 'repeats' in the reference genome object:
 te_genes_list = [gene for gene in ref_genome.genes[2] if gene.id in te_ids]
 move_to_repeats!(ref_genome, te_genes_list)
 te_genes_list = nothing
+GC.gc()
+
+# Write combined TE coordinates to BED file:
+te_bed_file = "../../dicty_data/te_density/te_coordinates.bed"
+open(te_bed_file, "w") do file
+    for (scaffold_name, scaffold) in ref_genome.scaffolds
+        for repeat in scaffold.repeats
+            println(file, "$(scaffold_name)\t$(repeat.repeat_start)\t$(repeat.repeat_end)\t$(repeat.type)")
+        end
+    end
+end
+
+# Write non-TE CDS gene coordinates to BED file:
+cds_bed_file = "../../dicty_data/te_density/cds_coordinates.bed"
+open(cds_bed_file, "w") do file
+    for gene in cds_genes
+        println(file, "$(gene.scaffold.name)\t$(gene.gene_start)\t$(gene.gene_end)\t$(gene.id)\t0\t$(gene.strand)")
+    end
+end
 
 # Caclulate the distance to the nearest TE for each CDS gene. If no TE is found on the same scaffold, 
 # the distance is set to Inf.
@@ -53,14 +75,14 @@ te_dist_df = DataFrame(GeneID = [gene.id for gene in cds_genes],
 
 for (i, gene) in enumerate(cds_genes)
 
-    temp_scaffold = gene.scaffold
+    target_scaffold = gene.scaffold
     te_dist_df[i, :GeneID] = gene.id
-    te_dist_df[i, :Scaffold] = temp_scaffold.name
+    te_dist_df[i, :Scaffold] = target_scaffold.name
     distance = Inf
     te_start = Inf
     te_end = Inf
 
-    for repeat_elem in temp_scaffold.repeats
+    for repeat_elem in target_scaffold.repeats
 
         te_start = repeat_elem.repeat_start
         te_end = repeat_elem.repeat_end
@@ -81,5 +103,7 @@ for (i, gene) in enumerate(cds_genes)
     te_dist_df[i, :TE_start] = te_start
     te_dist_df[i, :TE_end] = te_end
 end
+
+leftjoin!(te_dist_df, te_overlap, on=:GeneID)
 
 CSV.write("../../dicty_data/te_distance.csv", te_dist_df)

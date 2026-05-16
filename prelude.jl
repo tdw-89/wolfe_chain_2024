@@ -1,3 +1,8 @@
+# Set working directory
+using Pkg
+cd(@__DIR__)
+Pkg.activate(".")
+
 # Custom library
 using BioinfoTools
 using .LoadGFF

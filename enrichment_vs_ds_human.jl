@@ -7,6 +7,7 @@ using JSON
 using .EnrichmentUtils
 
 reload_peak_data = false
+NEWDS = false #
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -52,7 +53,16 @@ peak_data = nothing
 GC.gc()
 
 # Load the paralog info
-paralog_data = CSV.read(human_paralog_info, DataFrame)
+paralog_data = nothing
+if NEWDS
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds_human.csv", DataFrame)
+    paralog_data.dS = paralog_data.New_dS
+    filter!(row -> !ismissing(row["dS"]), paralog_data)
+    paralog_data.dS = Float64.(paralog_data.dS)
+else
+    paralog_data = CSV.read(human_paralog_info, DataFrame)
+end
+
 filter!(row -> row.dS <= 3, paralog_data)
 CSV.write("../../dicty_data/paralog_data_human.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])

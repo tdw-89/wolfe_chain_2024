@@ -44,7 +44,7 @@ filter!(row -> !ismissing(row.ParalogID), paralog_data)
 
 # Filter out genes/paralogs in the blacklist or not in the CDS list
 filter!(row -> row.GeneID in cds_ids && row.ParalogID in cds_ids, paralog_data)
-filter!(row -> row.GeneID ∉ blacklist.GeneID && row.ParalogID ∉ blacklist.GeneID, paralog_data)
+filter!(row -> row.GeneID ∉ blacklist.GeneID && row.ParalogID ∉ blacklist.GeneID, paralog_data) #
 filter!(id -> id ∉ blacklist.GeneID, singleton_ids)
 
 # Remove duplicates
@@ -58,7 +58,7 @@ filter!(row -> row[3] >= 30 && row[4] >= 30, paralog_data)
 # but are nonetheless paired with a more diverged duplicate (giving the false impression that their paired/averaged data
 # represents the state of more diverged pairs that haven't experienced any duplication since their divergence)
 
-rbh_df = rbh(paralog_data, scoring="mean")
+rbh_df = rbh(paralog_data, scoring="ds")
 rbh_id_pairs = collect(zip(rbh_df.GeneID, rbh_df.ParalogID))
 filter!(row -> (row.GeneID, row.ParalogID) in rbh_id_pairs, paralog_data)
 

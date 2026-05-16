@@ -1,14 +1,13 @@
 ---
 engine: julia
+params:
+  human: true # 
 julia:
   exeflags: ["--project=@."]
-title: "dN/dS comparison"
-author: "Tom Wolfe"
-date: "4/11/2026"
 format:
-  html:
-    toc: true
-    embed-resources: true
+  pdf:
+    mainfont: "TeX Gyre Termes" # or "STIX Two Text" or "Noto Serif"
+    mathfont: "TeX Gyre Termes Math" # Matches the text font for equations
 theme: sandstone
 execute:
   echo: false
@@ -29,7 +28,7 @@ using Statistics
 # Functions
 function getcors(x1,x2)
     temp_df = DataFrame("x1" => x1, "x2" => x2)
-    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    filter!(row -> !isnan(row.x1) && !isnan(row.x2), temp_df)
     temp_df.x1 = Float64.(temp_df.x1)
     temp_df.x2 = Float64.(temp_df.x2)
     return corspearman(temp_df.x1, temp_df.x2)
@@ -37,7 +36,7 @@ end
 
 function getcorl(x1,x2)
     temp_df = DataFrame("x1" => x1, "x2" => x2)
-    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    filter!(row -> !isnan(row.x1) && !isnan(row.x2), temp_df)
     temp_df.x1 = Float64.(temp_df.x1)
     temp_df.x2 = Float64.(temp_df.x2)
     return cor(temp_df.x1, temp_df.x2)
@@ -56,7 +55,7 @@ end
 
 function rankrank(x1, x2, skipzeros=false)
     temp_df = DataFrame("x1" => x1, "x2" => x2)
-    filter!(row -> !ismissing(row.x1) && !ismissing(row.x2), temp_df)
+    filter!(row -> !isnan(row.x1) && !isnan(row.x2), temp_df)
     temp_df.x1 = Float64.(temp_df.x1)
     temp_df.x2 = Float64.(temp_df.x2)
     if skipzeros
@@ -64,21 +63,61 @@ function rankrank(x1, x2, skipzeros=false)
     end
     temp_df.x1_rank = ordinalrank(temp_df.x1)
     temp_df.x2_rank = ordinalrank(temp_df.x2)
-    return scatter(x=temp_df.x1_rank, y=temp_df.x2_rank, mode="markers")
+    return plot(
+        scatter(x=temp_df.x1_rank, y=temp_df.x2_rank, mode="markers"),
+        Layout(xaxis_title="YN00 dS rank", yaxis_title="Ensembl dS rank")
+    )
 end
 
 function parse_with_na(str)
-    if isa(str, Missing)
-        return missing
+    if ismissing(str)
+        return NaN64
     elseif isa(str, Number)
         return str
     end
-    if lowercase(str) == "na"      || 
-       lowercase(str) == "missing" || 
+    if lowercase(str) == "na"      ||
+       lowercase(str) == "missing" ||
        str == ""
-        return missing
+        return NaN64
     else
         return parse(Float64, str)
+    end
+end
+
+function deduplicate(
+    df::DataFrame, 
+    seq1_idx::Int=1,
+    seq2_idx::Int=2,
+    dS_idx::Int=3
+    )
+    dict = Dict{String, Float64}()
+    errors = Set{Tuple{String, String}}()
+    for i in 1:nrow(df)
+        s1 = String(df[i,seq1_idx])
+        s2 = String(df[i,seq2_idx])
+        dS = typeof(df[i, dS_idx]) <: AbstractString ? parse_with_na(df[i,dS_idx]) : Float64(df[i,dS_idx])
+        seqs = sort([s1,s2])
+        key = join(seqs, " - ")
+        if haskey(dict, key)
+            old_nan = isnan(dict[key])
+            new_nan = isnan(dS)
+            if (old_nan && !new_nan) || 
+                (!old_nan && new_nan) ||
+                (!old_nan && !new_nan && dict[key] != dS)
+                push!(errors, (key, "Conflict: existing dS=$(dict[key]), new dS=$dS"))
+            end
+        else
+            dict[key] = dS
+        end
+    end
+    if isempty(errors)
+        return filter(row -> String(row[seq1_idx]) * " - " * String(row[seq2_idx]) in keys(dict), df)
+    else
+        println("Errors found:")
+        for (key, msg) in errors
+            println("  $key: $msg")
+        end
+        return nothing
     end
 end
 
@@ -93,10 +132,9 @@ end
 
 ```{julia}
 #| output: asis
-human = true # Set to false for dicty data
 println(
 """
-# dN/dS estimation comparison for $(human ? "human" : "dicty") paralogs
+# dN/dS estimation comparison for $(human ? "Human" : "D. discoideum") paralogs
 """)
 ```
 
@@ -106,7 +144,7 @@ println(
 
 ## Original (Ensembl 52-based) dN/dS values
 human_ds_old = "../../dicty_data/mammals/primates/h_sapiens/Ensembl_99/paralog_info_GRCh38_ensembl_99.txt"
-human_ds_new = "../../dicty_data/mammals/primates/h_sapiens/new_ds_humans.csv"
+human_ds_new = "../../dicty_data/new_ds_human.csv"
 dicty_ds_new = "../../dicty_data/new_ds_dicty.csv"
 dicty_ds_old = "../../dicty_data/AX4/genome_ver_2_7/biomart/genes_v52/d_disc_paralogs_biomart_ensembl_protist_ver_52.txt"
 dicty_fasta = "../../dicty_data/Dictyostelium_discoideum.dicty_2.7.pep.all.fa"
@@ -135,11 +173,16 @@ pids = map(rec -> split(split(description(rec))[1], ".")[1], recs)
 gids = map(rec -> split(split(split(description(rec))[4], ":")[2], ".")[1], recs)
 ptog=Dict(zip(pids,gids))
 gtop=Dict(zip(gids,pids))
+filter!(row -> haskey(ptog, split(row.seq1, ".")[1]) && haskey(ptog, split(row.seq2, ".")[1]), newds)
 insertcols!(newds, "GeneID" => map(id -> ptog[split(id, ".")[1]], newds.seq1))
 insertcols!(newds, "ParalogID" => map(id -> ptog[split(id, ".")[1]], newds.seq2))
 select!(newds, [31,32,3:30...,1,2])
 select!(newds, [1,2,13,15,3,4])
 format!(newds)
+newds = newds |> filter(row -> row.Perc1 >= 30 && row.Perc2 >= 30)
+if human
+    CSV.write("../../dicty_data/mammals/primates/h_sapiens/new_ds_humans_filt.csv", newds)
+end
 
 ## Create pair-order agnostic lookup tables for old and new dN/dS values
 map_new = tomap(newds)
@@ -151,7 +194,7 @@ select!(old_pairs, [1,2,5,6,3,4])
 format!(old_pairs);
 ```
 
-## Old (Ensembl 52-based) dS values vs. new (YN00-based) dS values
+## Ensembl dS values vs. YN00 dS values
 ```{julia}
 #| output: asis
 #| echo: false
@@ -165,10 +208,13 @@ h2 = histogram(
     histnorm="percent",
     name = "New dS"
 )
-plot([h1, h2], Layout(title="Distribution of old vs. new dS values$(human ? " (human)" : " (dicty)")", xaxis_title="dS", yaxis_title="Count"))
-
+fig = make_subplots(rows=1,cols=2)
+add_trace!(fig, h1, col=1)
+add_trace!(fig, h2, col=2)
+relayout!(fig, title="Distribution of old vs. new dS values$(human ? " (Human)" : " (D. discoideum)")", xaxis_title="dS", yaxis_title="Count")
+fig.plot
 ```
-## Spearman and Pearson correlation of old vs. new dS values
+## Spearman and Pearson correlation of Ensembl vs. YN00 dS values
 ### All new values from pairs matching old pairs
 ```{julia}
 #| output: asis
@@ -195,18 +241,16 @@ println("""
 """)
 ```
 
-### Rank-rank plot of old vs. new dS values for all pairs matching old pairs
+### Rank-rank plot of Ensembl vs. YN00 dS values for all pairs matching old pairs
 ```{julia}
 #| label: fig-rank-rank-ds
-#| fig-cap: "Rank-rank plot of old vs. new dS values for all pairs matching old pairs"
-rankrank(dS_new, dS_old) |> plot
+#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values for all pairs matching old pairs"
+rankrank(dS_new, dS_old)
 ```
 
 ## Original filtered pairs
 ```{julia}
-#| label: fig-old-filtered-ds
-#| fig-cap: "Rank-rank plot of old vs. new dS values"
-#| fig-subcap: "Original filtered pairs"
+#| output: asis
 old_filt_in_new = [
     [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
     for row in eachrow(old_pairs) 
@@ -222,8 +266,12 @@ println("""| Correlation | Statistic | Value |
 | ρ | dS | $ds_cors_filt |
 | r | dS | $ds_corl_filt |
 """)
-
-rankrank(dS_new_filt, dS_old_filt) |> plot
+```
+```{julia}
+#| label: fig-old-filtered-ds
+#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values"
+#| fig-subcap: "Original filtered pairs"
+rankrank(dS_new_filt, dS_old_filt)
 ```
 
 ```{julia}

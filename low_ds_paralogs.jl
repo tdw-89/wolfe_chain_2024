@@ -16,7 +16,7 @@ end
 # Genome data
 gff_data = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
-te_distance_file = "../../dicty_data/te_distance.csv"
+te_density_file = "../../dicty_data/te_density/te_density.csv"
 
 # Expression data
 expr_data_file = "../../dicty_data/filtered/expr_data_filt_kallisto_ensembl52_single.tsv"
@@ -101,10 +101,38 @@ end
 
 CSV.write("../../dicty_data/low_ds_df.csv", low_ds_df)
 
-te_distance = CSV.read(te_distance_file, DataFrame)
+te_density = CSV.read(te_density_file, DataFrame)
 
 has_k9me3_ids = low_ds_df.GeneID[low_ds_df.HasK9me3 .== true]
 no_k9me3_ids = low_ds_df.GeneID[low_ds_df.HasK9me3 .== false]
-te_distance_has_k9me3 = te_distance[findall(id -> id ∈ has_k9me3_ids, te_distance.GeneID), :]
-te_distance_no_k9me3 = te_distance[findall(id -> id ∈ no_k9me3_ids, te_distance.GeneID), :]
-mwu_test = MannWhitneyUTest(te_distance_has_k9me3.Distance, te_distance_no_k9me3.Distance)
+te_density_has_k9me3 = te_density[findall(id -> id ∈ has_k9me3_ids, te_density.Gene_ID), :]
+te_density_has_k9me3 = (te_density_has_k9me3.Upstream .+ te_density_has_k9me3.Internal .+ te_density_has_k9me3.Downstream)
+te_density_no_k9me3 = te_density[findall(id -> id ∈ no_k9me3_ids, te_density.Gene_ID), :]
+te_density_no_k9me3 = (te_density_no_k9me3.Upstream .+ te_density_no_k9me3.Internal .+ te_density_no_k9me3.Downstream)
+
+mwu_test = MannWhitneyUTest(te_density_has_k9me3, te_density_no_k9me3)
+
+#=
+|    group    | median density |
+|-------------|----------------|
+| Has H3K9me3 |      2.12      |
+|  No H3K9me3 |      0.67      |
+
+Approximate Mann-Whitney U test
+-------------------------------
+Population details:
+    parameter of interest:   Location parameter (pseudomedian)
+    value under h_0:         0
+    point estimate:          1.45543
+
+Test summary:
+    outcome with 95% confidence: reject h_0
+    two-sided p-value:           <1e-04
+
+Details:
+    number of observations in each group: [23, 161]
+    Mann-Whitney-U statistic:             2830.0
+    rank sums:                            [3106.0, 13914.0]
+    adjustment for ties:                  0.0
+    normal approximation (μ, σ):          (978.5, 238.931)
+=#

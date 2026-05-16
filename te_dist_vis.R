@@ -7,7 +7,7 @@ library(conflicted)
 conflicts_prefer(dplyr::filter)
 
 # Files
-te_file <- "../../dicty_data/rm_genomes/ensembl_52/full/results_v1/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
+te_file <- "../../dicty_data/rm_genomes/ensembl_52/full/results_v3/onecodetofindthemall/Dictyostelium_discoideum.dicty_2.7.dna.toplevel_aggregated_compat.csv"
 chrom_lengths_ensembl <- "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 peak_dir <- "../../dicty_data/wang_et_al/processed/run_1_ensembl52"
 peak_dir_2 <- "../../dicty_data/wang_et_al/processed/run_2_ensembl52"
@@ -37,9 +37,9 @@ dna_te_grange <- toGRanges(dna_te_df)
 
 # Add to the plots
 kpPlotDensity(kp, data = dna_te_grange, col="#AACCFF", window.size = window_size)
+kpPlotDensity(kp, data = rte_grange, col="#EED0A0", window.size = window_size)
 # kpPlotRegions(kp, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
 
-kpPlotDensity(kp, data = rte_grange, col="#EED0A0", window.size = window_size)
 # kpPlotRegions(kp, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
 
 # Load K9me3 data
@@ -125,8 +125,8 @@ for(chrom_grange in chrom_granges){
   if(chrom_grange@ranges@width[1] >= 30000){
     
     kp_ind <- plotKaryotype(genome = chrom_grange, plot.type = 2, main = "All tissue types combined")
-    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
+    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, k9me3_grange_combined, avoid.overlapping=F, col="#9F313F", data.panel = 2)
     kpPlotDensity(kp_ind, atac_grange_combined, window.size = 30000, col="#006F1F", data.panel = 2)
     kpPlotRegions(kp_ind, dup_region_grange, avoid.overlapping=F, col="#808080", data.panel = 2)
@@ -140,8 +140,8 @@ for(chrom_grange in chrom_granges){
   if(chrom_grange@ranges@width[1] >= 30000){
     
     kp_ind <- plotKaryotype(genome = chrom_grange, plot.type = 2, main = "F")
-    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
+    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, k9me3_granges$FA_K9me3_fastq_dup_removed_converted.narrowPeak, avoid.overlapping=F, col="#9F313F", data.panel = 2)
     kpPlotDensity(kp_ind, atac_granges$`171031-13-FA-1E6.narrowPeak`, window.size = 30000, col="#006F1F", data.panel = 2)
     kpPlotRegions(kp_ind, dup_region_grange, avoid.overlapping=F, col="#808080", data.panel = 2)
@@ -154,8 +154,8 @@ for(chrom_grange in chrom_granges){
   if(chrom_grange@ranges@width[1] >= 30000){
     
     kp_ind <- plotKaryotype(genome = chrom_grange, plot.type = 2, main = "M")
-    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
+    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, k9me3_granges$MA_K9me3_fastq_dup_removed_converted.narrowPeak, avoid.overlapping=F, col="#9F313F", data.panel = 2)
     kpPlotDensity(kp_ind, atac_granges$`171031-11-MA-1E6.narrowPeak`, window.size = 30000, col="#006F1F", data.panel = 2)
     kpPlotRegions(kp_ind, dup_region_grange, avoid.overlapping=F, col="#808080", data.panel = 2)
@@ -168,8 +168,8 @@ for(chrom_grange in chrom_granges){
   if(chrom_grange@ranges@width[1] >= 30000){
     
     kp_ind <- plotKaryotype(genome = chrom_grange, plot.type = 2, main = "V")
-    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, data = dna_te_grange, avoid.overlapping=F, col="#AACCFF")
+    kpPlotRegions(kp_ind, data = rte_grange, avoid.overlapping=F, col="#EED0A0")
     kpPlotRegions(kp_ind, k9me3_granges$VA_K9me3_fastq_dup_removed_converted.narrowPeak, avoid.overlapping=F, col="#9F313F", data.panel = 2)
     kpPlotDensity(kp_ind, atac_granges$`171031-7-VA-1E6_S10.narrowPeak`, window.size = 30000, col="#006F1F", data.panel = 2)
     kpPlotRegions(kp_ind, dup_region_grange, avoid.overlapping=F, col="#808080", data.panel = 2)

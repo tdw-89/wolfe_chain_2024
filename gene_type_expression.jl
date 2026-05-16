@@ -34,8 +34,6 @@ duplicates = [gene for gene in non_te_gene_list if gene.id in paralog_df.GeneID 
 singletons = [gene for gene in non_te_gene_list if gene.id in singleton_df.GeneID]
 
 te_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in te_genes_list], name = "TE genes", color="blue")
-dup_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in duplicates], name = "Paralogs")
-sing_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in singletons], name = "Singletons")
 non_te_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in non_te_gene_list], name = "Non-TE genes", color="red")
 
 layout = Layout(yaxis=attr(title="log2(TPM + 0.5)", 
@@ -63,3 +61,10 @@ p_val = pvalue(test_res)
 Z = (test_res.U - test_res.mu) / test_res.sigma |> abs
 N = test_res.nx + test_res.ny
 r = Z / √N
+
+#=
+𝑝 value = 8.723881780776673e-76
+Z = 43.140803659274546
+N = 11803
+r = 0.3970928137525126
+=#

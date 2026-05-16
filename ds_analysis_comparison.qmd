@@ -14,7 +14,7 @@ execute:
   echo: false
 ---
 
-# Enrichment heatmaps
+# Histone Mark Enrichment
 ```{julia}
 #| output: false
 #| echo: false
@@ -324,13 +324,13 @@ end, "\n"))
 """)
 ```
 
-## Gene expression comparison
-### Expression deciles
+# Gene expression comparison
+## Expression deciles
 ```{julia}
 boxes = build_box_plts_json(expr_dec_oldds, expr_dec_newds, "Old dS", "New dS")
 plot(boxes, Layout(title="Gene expression deciles", yaxis_title="dS", xaxis_title=" (<-lower) Expression decile (higher->)", showlegend=false))
 ```
-### Expression difference vs. dS
+## Expression difference vs. dS
 ```{julia}
 boxes = build_box_plts_df(expr_pairs_oldds, expr_pairs_newds, "Old dS", "New dS")
 plot(boxes, Layout(title="Expression difference vs. dS", yaxis_title="Expression difference", xaxis_title=" (<-lower) dS decile (higher->)", showlegend=false))
