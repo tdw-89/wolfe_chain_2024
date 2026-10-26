@@ -62,7 +62,7 @@ function create_df(gene_scores::Dict{String, NTuple{3, Float64}})
         )
 end
 
-human = true
+human = false
 
 window_file = human ? "../../dicty_data/te_density/tes_in_window_human.bed" : "../../dicty_data/te_density/tes_in_window.bed"
 

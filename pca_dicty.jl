@@ -41,7 +41,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "M" # "F" "M" or "All"
+life_cycle = "All" # "F" "M" or "All"
 PCA_analysis = true
 
 k27ac_upstream, k4me3_upstream, k9me3_upstream, atac_upstream = -500, -500, -500, -500

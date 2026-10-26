@@ -6,8 +6,8 @@ julia:
   exeflags: ["--project=@."]
 format:
   pdf:
-    mainfont: "TeX Gyre Termes" # or "STIX Two Text" or "Noto Serif"
-    mathfont: "TeX Gyre Termes Math" # Matches the text font for equations
+    mainfont: "TeX Gyre Termes" #
+    mathfont: "TeX Gyre Termes Math" #equations
 theme: sandstone
 execute:
   echo: false
@@ -104,7 +104,7 @@ function deduplicate(
             if (old_nan && !new_nan) || 
                 (!old_nan && new_nan) ||
                 (!old_nan && !new_nan && dict[key] != dS)
-                push!(errors, (key, "Conflict: existing dS=$(dict[key]), new dS=$dS"))
+                push!(errors, (key, "Conflict: Ensembl dS=$(dict[key]), YN00 dS=$dS"))
             end
         else
             dict[key] = dS
@@ -201,17 +201,17 @@ format!(old_pairs);
 h1 = histogram(
     x = oldds.dS |> skipmissing |> filter(x -> x <=10) |> collect,
     histnorm="percent",
-    name = "Old dS"
+    name = "Ensembl dS"
 )
 h2 = histogram(
     x = newds.dS |> skipmissing |> filter(x -> x <=1) |> collect,
     histnorm="percent",
-    name = "New dS"
+    name = "YN00 dS"
 )
 fig = make_subplots(rows=1,cols=2)
 add_trace!(fig, h1, col=1)
 add_trace!(fig, h2, col=2)
-relayout!(fig, title="Distribution of old vs. new dS values$(human ? " (Human)" : " (D. discoideum)")", xaxis_title="dS", yaxis_title="Count")
+relayout!(fig, title="Distribution of Ensembl vs. YN00 dS values$(human ? " (Human)" : " (D. discoideum)")", xaxis_title="dS", yaxis_title="Count")
 fig.plot
 ```
 ## Spearman and Pearson correlation of Ensembl vs. YN00 dS values
@@ -219,7 +219,7 @@ fig.plot
 ```{julia}
 #| output: asis
 old_in_new = [
-    [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
+    [("YN00",(map_new[row[1] * "-" * row[2]])), ("Ensembl",(row[3],row[4]))] 
     for row in eachrow(oldds) 
     if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
 ]
@@ -244,7 +244,7 @@ println("""
 ### Rank-rank plot of Ensembl vs. YN00 dS values for all pairs matching old pairs
 ```{julia}
 #| label: fig-rank-rank-ds
-#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values for all pairs matching old pairs"
+#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values for all paralog pairs"
 rankrank(dS_new, dS_old)
 ```
 
@@ -252,7 +252,7 @@ rankrank(dS_new, dS_old)
 ```{julia}
 #| output: asis
 old_filt_in_new = [
-    [("new",(map_new[row[1] * "-" * row[2]])), ("old",(row[3],row[4]))] 
+    [("YN00",(map_new[row[1] * "-" * row[2]])), ("Ensembl",(row[3],row[4]))]
     for row in eachrow(old_pairs) 
     if !ismissing(row[1]) && !ismissing(row[2]) && haskey(map_new,row[1] * "-" * row[2])
 ]
@@ -269,8 +269,8 @@ println("""| Correlation | Statistic | Value |
 ```
 ```{julia}
 #| label: fig-old-filtered-ds
-#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values"
-#| fig-subcap: "Original filtered pairs"
+#| fig-cap: "Rank-rank plot of Ensembl vs. YN00 dS values for filtered paralog pairs used in final analysis"
+#| fig-subcap: "Correlation of dS estimation methods in filtered paralog pairs"
 rankrank(dS_new_filt, dS_old_filt)
 ```
 

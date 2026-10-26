@@ -133,7 +133,7 @@ overlapping_ids_filt = filter(row -> row.ExonOverlapPerc >= TE_OVERLAP_CUTOFF, o
 all_te_IDs = union(mapped_tes.GeneID, overlapping_ids_filt)
 CSV.write("ensembl_te_ids_with_predicted.tsv", DataFrame(GeneID=all_te_IDs))
 labeled_df = DataFrame(GeneID=mapped_tes.GeneID, Source="dictyBase")
-labeled_df = vcat(labeled_df, DataFrame(GeneID=overlapping_ids_filt, Source="Predicted"))
+labeled_df = vcat(labeled_df, DataFrame(GeneID=overlapping_ids_filt |> filter(nm -> nm ∉ labeled_df.GeneID), Source="Predicted"))
 CSV.write("ensembl_te_ids_with_source.tsv", labeled_df)
 
 # Total genome coverage

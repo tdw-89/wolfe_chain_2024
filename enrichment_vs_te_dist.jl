@@ -3,6 +3,7 @@ include("prelude.jl")
 using .EnrichmentUtils
 using .RepeatUtils
 using CategoricalArrays
+using MultipleTesting
 
 # Collect test results for summary table at end
 test_results = DataFrame(
@@ -173,7 +174,7 @@ record_test!(test_results,
     MannWhitneyUTest(te_densities_low_ds_k9me3, te_densities_low_ds_no_k9me3),
     "Mann–Whitney U test on TE density: compares low ds paralogs with H3K9me3 vs without."
 )
-
+test_results.PValueAdjusted = adjust(test_results.PValue, BenjaminiHochberg())
 # --- Summary table of hypothesis tests ---
 display(test_results)
 

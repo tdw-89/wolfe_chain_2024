@@ -53,7 +53,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "All" # "F" "M" "V" or "All"
+life_cycle = "V" # "F" "M" "V" or "All"
 
 gene_range = GeneRange(TSS(), TES(), -500, 500)
 
@@ -262,7 +262,19 @@ heatmap_fig = plot(heatmap_trace, heatmap_layout)
 display(heatmap_fig)
 savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle).html"))
 
-mlr_model = lm(
+fml = life_cycle == "V" ?
+    @formula(
+        dS ~
+        AvgExpr +
+        H3K27ac +
+        H3K4me3 +
+        H3K9me3 +
+        HasH3K27ac +
+        HasH3K4me3 +
+        HasH3K9me3 +
+        SameChrom +
+        ParalogDist
+    ) :
     @formula(
         dS ~
         AvgExpr +
@@ -276,7 +288,9 @@ mlr_model = lm(
         HasATAC +
         SameChrom +
         ParalogDist
-    ), 
+    )
+mlr_model = lm(
+    fml, 
     full_df)
 null_model = lm(@formula(dS ~ 1), full_df)
 f_test_result = ftest(null_model.model, mlr_model.model)
