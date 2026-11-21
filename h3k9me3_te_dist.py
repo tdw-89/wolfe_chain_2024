@@ -1,14 +1,24 @@
+"""Overlap of H3K9me3 peaks with TEs and non-TE coding genes in D. discoideum, and a permutation test of
+whether TEs overlap H3K9me3 more than expected when shuffled within gene and TE regions.
+
+Inputs are written by te_windows.sh. Results go to dicty_data/stats/h3k9me3_te_overlap.csv.
+"""
+import csv
 import os
 import subprocess
 import sys
 
-BEDTOOLS_DIR = "/Users/thomaswolfe/Documents/bedtools2/bin"
+# bedtools location: $BEDTOOLS_DIR if set, otherwise ~/Documents/bedtools2/bin (also searched after PATH)
+BEDTOOLS_DIR = os.environ.get("BEDTOOLS_DIR", os.path.expanduser("~/Documents/bedtools2/bin"))
 os.environ["PATH"] = f"{BEDTOOLS_DIR}:{os.environ.get('PATH', '')}"
-genes_bed = "../../dicty_data/te_density/cds_coordinates_sorted_3_column.bed"
-tes_bed = "../../dicty_data/te_density/te_coordinates_sorted_merged.bed"
-peaks_bed = "../../dicty_data/te_density/h3k9me3_sorted_merged.bed"
-gene_te_coords_only = "../../gene_te_coords_only.bed"
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+te_dir = "../../dicty_data/te_density"
+genes_bed = f"{te_dir}/cds_coordinates_sorted_3_column.bed"
+tes_bed = f"{te_dir}/te_coordinates_sorted_merged.bed"
+peaks_bed = f"{te_dir}/h3k9me3_sorted_merged.bed"
+gene_te_coords_only = f"{te_dir}/gene_te_coords_only.bed"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
+stats_file = "../../dicty_data/stats/h3k9me3_te_overlap.csv"
 iterations = 10000
 
 def run_command(cmd):
@@ -52,14 +62,6 @@ def main():
         pct_overlap_gene_by_k9 = 0.0
         pct_overlap_k9_by_gene = 0.0
 
-    print(f"Total TE bases: {total_te_bases:,}")
-    print(f"Overlapping bases: {overlap_te_bases:,}")
-    print(f"Percentage of TE bases with H3K9me3: {pct_overlap_te_by_k9:.2f}%\n")
-    print(f"Percentage of H3K9me3 bases overlapping a TE: {pct_overlap_k9_by_te:.2f}%\n")
-    print(f"Total non-TE gene bases: {total_gene_bases:,}")
-    print(f"Overlapping bases: {overlap_gene_bases:,}")
-    print(f"Percentage of non-TE gene bases with H3K9me3: {pct_overlap_gene_by_k9:.2f}%\n")
-    print(f"Percentage of H3K9me3 bases overlapping a non-TE gene: {pct_overlap_k9_by_gene:.2f}%\n")
 
     print("1. Creating the trimmed coordinates file for shuffling...")
     # Concatenate and sort to create the inclusion file for shuffling
@@ -74,7 +76,7 @@ def main():
 
     for i in range(1, iterations + 1):
         shuffle_cmd = (
-            f"bedtools shuffle -i {tes_bed} -g {chrom_lengths_file} -incl {gene_te_coords_only} | "
+            f"bedtools shuffle -seed {i} -i {tes_bed} -g {chrom_lengths_file} -incl {gene_te_coords_only} | "
             f"bedtools intersect -a stdin -b {peaks_bed} | "
             f"bedtools sort -i - | bedtools merge -i - | "
             f"awk '{{sum += $3 - $2}} END {{print sum+0}}'"
@@ -88,18 +90,28 @@ def main():
         if i % 100 == 0:
             print(f"   ...completed {i}/{iterations} permutations")
 
-    print("\n4. Calculating empirical p-value...")
-    p_value = count_greater_or_equal / iterations
+    # The observed arrangement counts as one permutation, so the smallest possible p is 1 / (iterations + 1)
+    p_value = (count_greater_or_equal + 1) / (iterations + 1)
 
-    print("-" * 40)
-    print("RESULTS:")
-    print(f"Total iterations: {iterations}")
-    print(f"Random iterations >= Observed: {count_greater_or_equal}")
-    print(f"Empirical P-value: {p_value}")
-    
-    if p_value == 0.0:
-        print("Note: Report as p < 0.001 (the random overlap never reached the observed overlap).")
-    print("-" * 40)
+    os.makedirs(os.path.dirname(stats_file), exist_ok=True)
+    with open(stats_file, "w", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["Statistic", "Value"])
+        writer.writerows([
+            ["TE bases", total_te_bases],
+            ["H3K9me3 bases", total_k9_bases],
+            ["Non-TE gene bases", total_gene_bases],
+            ["TE bases overlapping H3K9me3", overlap_te_bases],
+            ["Non-TE gene bases overlapping H3K9me3", overlap_gene_bases],
+            ["Percent of TE bases with H3K9me3", pct_overlap_te_by_k9],
+            ["Percent of H3K9me3 bases in TEs", pct_overlap_k9_by_te],
+            ["Percent of non-TE gene bases with H3K9me3", pct_overlap_gene_by_k9],
+            ["Percent of H3K9me3 bases in non-TE genes", pct_overlap_k9_by_gene],
+            ["Permutations", iterations],
+            ["Permutations with overlap >= observed", count_greater_or_equal],
+            ["Permutation p", p_value],
+        ])
+    print(f"Results written to {stats_file}")
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,7 @@ using Serialization
 using JSON
 using GLM
 
-TISSUE_TYPE = ARGS[1]  # Options: "All", "V", "M", "F"
+TISSUE_TYPE = stage_arg()  # "All", "V", "M" or "F"
 
 function get_sample_inds(tissue_type)
     if tissue_type == "All"
@@ -61,6 +61,13 @@ ref_genome = loadgenome(gff_data, chrom_lengths_file)
 # Load peak data
 peak_files = [filter(fn -> !contains(fn, r"_S[AB]_"), readdir(chip_peak_file_dir, join=true)); readdir(atac_peak_file_dir, join=true)]
 filter!(fn -> endswith(fn, ".narrowPeak"), peak_files)
+
+# Keep only the selected life-cycle stage's samples; the single-stage indices from get_sample_inds
+# ([1], [2], [3], [4]) assume this
+if TISSUE_TYPE != "All"
+    filter!(fn -> contains(fn, "_$TISSUE_TYPE"), peak_files)
+end
+
 peak_data = binpeaks(peak_files, chrom_lengths_file)
 addtogenes!(ref_genome, peak_data)
 
@@ -71,9 +78,9 @@ expr_data = CSV.read(expr_data_file, DataFrame)
 # was taken from.
 rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
 
-# Average gene expression counts across all life-cycle stages
+# Average gene expression over the stages with ChIP-seq data (V/M/F)
 if TISSUE_TYPE == "All"
-    insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
+    insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, ["V", "M", "F"]])))
     select!(expr_data, ["GeneID", "Avg"])
 elseif TISSUE_TYPE == "V"
     select!(expr_data, ["GeneID", "V"])
@@ -164,7 +171,6 @@ bar_plots, kw_tests, means_vecs = plot_bar_expr(
     return_figs=true,
     horizontal=false
     )
-eta_sq_vals = η².(kw_tests)
 p_vals_perm_cor = [
     get_cor_expr(
         expr_data,
@@ -173,10 +179,16 @@ p_vals_perm_cor = [
         ref_genome
     ) for sample_ind in sample_inds_vec
 ]
-# V: Correlations + p values equivalent, no ATAC
-# M: Correlations + p values equivalent
-# F: Correlations + p values equivalent
-adj_pvals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
-adj_pvals_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_expr_$TISSUE_TYPE.jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_expr_$TISSUE_TYPE.json"), means_vecs)
+
+# Table 2 (expression rows): permutation test of the Pearson correlation between per-gene coverage and
+# expression, and Kruskal–Wallis test across expression deciles; BH-adjusted across marks
+mark_names = ["H3K27ac", "H3K4me3", "H3K9me3", "ATAC"][eachindex(sample_inds_vec)]
+stats = DataFrame([kw_row(mark, test) for (mark, test) in zip(mark_names, kw_tests)])
+rename!(stats, :Test => :Mark, :H => :KW_H, :df => :KW_df, :N => :KW_N, :p => :KW_p)
+stats.KW_p_adj = adjust(stats.KW_p, BenjaminiHochberg())
+stats.r = [pair[2] for pair in p_vals_perm_cor]
+stats.r_p = [pair[1] for pair in p_vals_perm_cor]
+stats.r_p_adj = adjust(stats.r_p, BenjaminiHochberg())
+write_stats("enrichment_vs_expression_$TISSUE_TYPE", stats)

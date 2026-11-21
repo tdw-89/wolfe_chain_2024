@@ -1,75 +1,36 @@
-library(dplyr)
-library(ComplexUpset)
-library(ggplot2)
-library(coro)
-
-low_ds_table <- "../../dicty_data/low_ds_df.csv"
-
-# Load the data as a df
-low_ds_df <- read.csv(low_ds_table)
-set_names <- c("H3K9me3",
-               "H3K27ac",
-               "H3K4me3",
-               "ATAC")
-names(low_ds_df) <- c("Gene ID", set_names, "Expression")
-low_ds_df[, 2:5] <- lapply(low_ds_df[, 2:5], function(col) {
-  as.integer(factor(col)) - 1
+# Figure 4: low-dS paralogs (two lowest dS deciles) by overlap with H3K9me3, H3K27ac, H3K4me3 and ATAC peaks,
+# with the expression of each intersection. Intersections that include H3K9me3 are highlighted; the
+# horizontal line in each expression box marks the median of all genes with (or without) H3K9me3.
+# Reads low_ds_df.csv (low_ds_paralogs.jl); writes ../../dicty_data/figures/fig4.pdf. The expression test
+# is in low_ds_paralogs.jl (stats/low_ds_paralogs.csv).
+suppressPackageStartupMessages({
+  library(ComplexUpset)
+  library(ggplot2)
 })
 
-h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 == TRUE])
-non_h3k9me3_med <- median(low_ds_df$Expression[low_ds_df$H3K9me3 != TRUE])
-wilcox.test(low_ds_df$Expression[low_ds_df$H3K9me3 == TRUE], 
-            low_ds_df$Expression[low_ds_df$H3K9me3 != TRUE])
+data_dir <- "../../dicty_data"
+fig_dir <- file.path(data_dir, "figures")
+dir.create(fig_dir, showWarnings = FALSE)
 
-med_expr <- generator(function() {
-  for (x in c(
-    non_h3k9me3_med,
-    non_h3k9me3_med,
-    non_h3k9me3_med,
-    non_h3k9me3_med,
-    non_h3k9me3_med,
-    non_h3k9me3_med,
-    h3k9me3_med,
-    h3k9me3_med,
-    h3k9me3_med,
-    h3k9me3_med,
-    h3k9me3_med,
-    h3k9me3_med,
-    non_h3k9me3_med
-  )) {
-    yield(x)
-  }
-})
-f <- med_expr()
+low_ds <- read.csv(file.path(data_dir, "low_ds_df.csv"))
+set_names <- c("H3K9me3", "H3K27ac", "H3K4me3", "ATAC")
+names(low_ds) <- c("GeneID", set_names, "Expression")
+low_ds[set_names] <- lapply(low_ds[set_names], function(x) as.logical(x))
+low_ds$GroupMedian <- ave(low_ds$Expression, low_ds$H3K9me3, FUN = median)
 
-# Create the upset plot theme
-plt_theme <- upset_default_themes()
-plt_theme$intersections_matrix[[1]]$text$size <- 18
-plt_theme$`Intersection size`[[1]]$text$size <- 18
-plt_theme$`Intersection size`[[1]]$axis.text$size <- 18
-plt_theme$`Intersection size`[[1]]$axis.text.x$size <- 18
-plt_theme$`Intersection size`[[1]]$axis.text.y$size <- 18
-plt_theme$overall_sizes[[1]]$text$size <- 18
-plt_theme$default[[1]]$text$size <- 18
-
-upset(low_ds_df,
-      set_names,
-      annotations = list(
-        "Expression" = ggplot(
-          mapping=aes(
-            x = intersection,
-            y = Expression
-          )
-        ) +
-          geom_boxplot(lwd=1.08) +
-          stat_summary(
-            fun = NULL,
-            fun.min = NULL,
-            fun.max = f,
-            geom = "errorbar", # Use errorbar to draw a horizontal line segment
-            color = "navyblue",
-            linewidth = 1.3,
-            width = 1
-          )
-      ),
-      themes = plt_theme)
+k9_color <- "#9F313F"
+plot <- upset(
+  low_ds, set_names,
+  name = "",
+  base_annotations = list("Intersection size" = intersection_size(text = list(size = 3.5))),
+  annotations = list(
+    "Expression" = ggplot(mapping = aes(x = intersection, y = Expression)) +
+      geom_boxplot(outlier.size = 0.8) +
+      geom_errorbar(aes(ymin = GroupMedian, ymax = GroupMedian), color = "navyblue", linewidth = 0.8, width = 0.9) +
+      ylab(expression(log[2] * "(TPM + 0.5)"))
+  ),
+  queries = list(upset_query(set = "H3K9me3", color = k9_color, fill = k9_color,
+                             only_components = c("intersections_matrix", "Intersection size"))),
+  themes = upset_modify_themes(list(default = theme(text = element_text(size = 12))))
+)
+ggsave(file.path(fig_dir, "fig4.pdf"), plot, width = 10, height = 7)

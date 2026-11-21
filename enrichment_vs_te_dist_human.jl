@@ -37,9 +37,13 @@ function get_statistic(test)
     end
 end
 
+# Group sizes; the Fisher tables below have one column per group
+group_sizes(test) = hasproperty(test, :nx) ? (test.nx, test.ny) : (test.a + test.c, test.b + test.d)
+
 function record_test!(results::DataFrame, label::AbstractString, test, description::AbstractString)
     stat_val, stat_sym = get_statistic(test)
-    push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, String(description)))
+    n1, n2 = group_sizes(test)
+    push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, n1, n2, String(description)))
     return test
 end
 
@@ -106,20 +110,17 @@ for id in te_dist_df.GeneID
 end
 
 # Collect test results per group for within-group BH adjustment
-group_a_results = DataFrame(
+new_results_table() = DataFrame(
     Test=String[],
     PValue=Float64[],
     TestStatistic=Float64[],
     StatisticSymbol=String[],
+    N1=Int[],
+    N2=Union{Missing, Int}[],
     Description=String[]
 )
-group_b_results = DataFrame(
-    Test=String[],
-    PValue=Float64[],
-    TestStatistic=Float64[],
-    StatisticSymbol=String[],
-    Description=String[]
-)
+group_a_results = new_results_table()
+group_b_results = new_results_table()
 # BEGIN GROUP A
 
 # TE distance distribution among filtered coding genes vs paralogs without H3K9me3:
@@ -190,7 +191,7 @@ record_test!(group_a_results,
     "Fisher's exact test on a 2\u00d72 table: tests whether the TE-overlap proportion (Distance==0) differs between paralogs with H3K9me3 vs without.")
 
 # Benjamini-Hochberg correction across all Group A p-values
-group_a_results.PValue = adjust(group_a_results.PValue, BenjaminiHochberg())
+group_a_results.PValueAdjusted = adjust(group_a_results.PValue, BenjaminiHochberg())
 
 # END GROUP A
 # BEGIN GROUP B
@@ -215,7 +216,7 @@ te_density_df = CSV.read(te_density_file, DataFrame)
 rename!(te_density_df, :Gene_ID => :GeneID)
 indiv_df = innerjoin(indiv_df, te_density_df, on=:GeneID)
 
-display(plot([
+isinteractive() && display(plot([
     box(y=indiv_df.pTriplo[indiv_df.HasK9me3 .== true], name="With K9me3", marker_color="blue"),
     box(y=indiv_df.pTriplo[indiv_df.HasK9me3 .== false], name="Without K9me3", marker_color="red")
 ],
@@ -230,7 +231,7 @@ record_test!(group_b_results,
     MannWhitneyUTest(indiv_df.pTriplo[indiv_df.HasK9me3 .== true], indiv_df.pTriplo[indiv_df.HasK9me3 .== false]),
     "Mann–Whitney U test: compares triplosensitivity scores (pTriplo) between paralogs with H3K9me3 vs without.")
 
-display(plot([
+isinteractive() && display(plot([
     box(y=indiv_df.pTriplo[indiv_df.Internal .> 0], name="Internal TE density > 0", marker_color="blue"),
     box(y=indiv_df.pTriplo[indiv_df.Internal .<= 0], name="Internal TE density = 0", marker_color="red")
 ],
@@ -244,22 +245,37 @@ record_test!(group_b_results,
     MannWhitneyUTest(indiv_df.pTriplo[indiv_df.Internal .> 0], indiv_df.pTriplo[indiv_df.Internal .<= 0]),
     "Mann–Whitney U test: compares pTriplo between paralogs with non-zero internal TE density vs zero internal TE density.")
 
-# Permutation tests: Spearman correlation between pTriplo and each TE density component
+# Figure S12: pTriplo by H3K9me3 status (A) and by TE overlap of the gene body (B)
+has_te = indiv_df.Internal .> 0
+triplo_fig = plot([
+        fig_box(indiv_df.pTriplo[indiv_df.HasK9me3], "With H3K9me3", BLUE; xaxis="x1", yaxis="y1"),
+        fig_box(indiv_df.pTriplo[.!indiv_df.HasK9me3], "Without H3K9me3", RED; xaxis="x1", yaxis="y1"),
+        fig_box(indiv_df.pTriplo[has_te], "TE overlap", BLUE; xaxis="x2", yaxis="y2"),
+        fig_box(indiv_df.pTriplo[.!has_te], "No TE overlap", RED; xaxis="x2", yaxis="y2")],
+    fig_layout(xaxis1=fig_axis(domain=[0, 0.45], anchor="y1", showgrid=false),
+               yaxis1=fig_axis(anchor="x1", title="pTriplo", range=[0, 1.02]),
+               xaxis2=fig_axis(domain=[0.55, 1], anchor="y2", showgrid=false),
+               yaxis2=fig_axis(anchor="x2", range=[0, 1.02]),
+               margin=attr(l=70, r=20, t=40, b=50),
+               annotations=[attr(text="<b>A</b>", x=0, y=1, xref="paper", yref="paper", xanchor="right", yanchor="bottom", showarrow=false, xshift=-40),
+                            attr(text="<b>B</b>", x=0.55, y=1, xref="paper", yref="paper", xanchor="right", yanchor="bottom", showarrow=false, xshift=-40)]))
+save_figure(triplo_fig, "figS12"; width=1000, height=450)
+
+# Permutation tests (10,000 permutations): Spearman correlation between pTriplo and each TE density
+# component, over all paralogs with a pTriplo score
 ptriplo    = collect(Float64, indiv_df.pTriplo)
 upstream   = collect(Float64, indiv_df.Upstream)
+internal   = collect(Float64, indiv_df.Internal)
 downstream = collect(Float64, indiv_df.Downstream)
 
 perm_results = Tuple{String, Tuple{Float64, Float64}, String}[]
 
-# Internal: Spearman correlation among genes with non-zero internal TE density
-internal   = collect(Float64, indiv_df.Internal)
 push!(perm_results, (
-    "Internal (density > 0)",
+    "Internal",
     perm_test(corspearman, ptriplo, internal),
     "Permutation test (Spearman ρ): correlation between pTriplo and internal TE density"
 ))
 
-# Upstream and Downstream: classify into two density clusters first, then test each cluster
 for (region_name, density) in [("Upstream", upstream), ("Downstream", downstream)]
     push!(perm_results, (
         "$region_name",
@@ -271,24 +287,15 @@ end
 # Push permutation results into group_b_results (raw p-values; adjusted below with all Group B tests)
 for i in eachindex(perm_results)
     label, (statistic, raw_p), description = perm_results[i]
-    push!(group_b_results, (label, raw_p, statistic, "\u03c1", description))
+    push!(group_b_results, (label, raw_p, statistic, "\u03c1", nrow(indiv_df), missing, description))
 end
 
 # Benjamini-Hochberg correction across all Group B p-values
-group_b_results.PValue = adjust(group_b_results.PValue, BenjaminiHochberg())
+group_b_results.PValueAdjusted = adjust(group_b_results.PValue, BenjaminiHochberg())
 
 # END GROUP B
 
 # Combine all test results
 test_results = vcat(group_a_results, group_b_results)
 
-# --- Summary table of hypothesis tests ---
-for row in eachrow(sort(test_results, :PValue))
-    println(row.Description)
-    println("---- 𝑝 value: " * string(row.PValue))
-    println("---- " * row.StatisticSymbol * ": " * string(row.TestStatistic))
-    println("")
-end
-
-out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_dist_human_$te_type.csv")
-CSV.write(out_path, test_results)
+write_stats("te_tests_human_$te_type", test_results)

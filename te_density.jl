@@ -1,6 +1,17 @@
-using DataFrames, CSV, OhMyThreads
+using DataFrames, CSV
 
-const λ = 1/20_000
+# Distance decay: 4.5 kb, the mean extent of H3K9me2 spread from euchromatic TEs in
+# D. melanogaster (Lee & Karpen 2017, eLife 6:e25762; mean 4.50 kb, SD 4.59 kb, 1 kb windows).
+const λ = 1/4_500
+
+# Flank window used to build tes_in_window*.bed (bedtools window -w 100000).
+const WINDOW = 100_000
+
+# Score of a flank that is entirely TE: sum of exp(-λd) for d = 1..WINDOW. Dividing by it puts
+# Upstream/Downstream on a 0-1 scale (distance-weighted fraction of the flank covered by TEs), the same
+# scale as Internal (fraction of the gene covered by TEs), so the three can be compared or summed.
+# Genes closer than WINDOW to a chromosome end are not corrected for their shorter flank.
+const FLANK_MAX = sum(exp(-λ * d) for d in 1:WINDOW)
 
 function calc_density_scores(line)
     cols = split(strip(line), '\t')
@@ -19,17 +30,21 @@ function calc_density_scores(line)
     int_end   = min(te_end, gene_end)
     internal_score = max(0, int_end - int_start) / gene_length
 
+    # TE bases are clipped to the window so a fully TE-covered flank scores exactly 1
     left_score = 0.0
-    for p in te_start:(min(te_end, gene_start) - 1)
-        distance = gene_start - p
-        left_score += 1.0 / exp(distance * λ)
+    for p in max(te_start, gene_start - WINDOW):(min(te_end, gene_start) - 1)
+        distance = gene_start - p        # 1 for the base next to the gene
+        left_score += exp(-distance * λ)
     end
 
     right_score = 0.0
-    for p in max(te_start, gene_end):(te_end - 1)
-        distance = p - gene_end
-        right_score += 1.0 / exp(distance * λ)
+    for p in max(te_start, gene_end):(min(te_end, gene_end + WINDOW) - 1)
+        distance = p - gene_end + 1      # 1 for the base next to the gene
+        right_score += exp(-distance * λ)
     end
+
+    left_score  /= FLANK_MAX
+    right_score /= FLANK_MAX
 
     upstream_score, downstream_score = strand == "+" ? (left_score, right_score) : (right_score, left_score)
 
@@ -62,16 +77,10 @@ function create_df(gene_scores::Dict{String, NTuple{3, Float64}})
         )
 end
 
-human = false
-
-window_file = human ? "../../dicty_data/te_density/tes_in_window_human.bed" : "../../dicty_data/te_density/tes_in_window.bed"
-
-gene_scores = Dict{String, Float64}()
-fh = open(window_file, "r")
-lines = readlines(fh)
-close(fh)
-
-df = map(calc_density_scores, lines) |> build_dict |> create_df
-
-output_file = human ? "../../dicty_data/te_density/te_density_human.csv" : "../../dicty_data/te_density/te_density.csv"
-CSV.write(output_file, df)
+# Both species; the window files are written by te_windows.sh
+te_density_dir = joinpath(@__DIR__, "../../dicty_data/te_density")
+for tag in ["", "_human"]
+    lines = readlines(joinpath(te_density_dir, "tes_in_window$tag.bed"))
+    df = map(calc_density_scores, lines) |> build_dict |> create_df
+    CSV.write(joinpath(te_density_dir, "te_density$tag.csv"), df)
+end

@@ -34,6 +34,7 @@ LanguageServer = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
 Loess = "4345ca2d-374a-55d4-8d30-97f9976e7612"
 MetaGraphs = "626554b9-1ddb-594c-aa3c-2596fe9399a5"
 MultipleTesting = "f8716d33-7c4a-5097-896f-ce0ecbd3ef6b"
+MultivariateStats = "6f286f6a-111f-5878-ab1e-185364afe411"
 NaturalSort = "c020b1a1-e9b0-503a-9c33-f039bfc54a85"
 OhMyThreads = "67456a42-1dca-4109-a031-0a68de7e3ad5"
 Pipe = "b98c9c47-44ae-5843-9183-064241ee97a0"
@@ -47,3 +48,9 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 XAM = "d759349c-bcba-11e9-07c2-5b90f8f05f7c"
 YeoJohnsonTrans = "bde5d4e9-ba51-5a47-b2d1-b5088a182367"
+
+[sources]
+BED = {rev = "develop", url = "https://github.com/tdw-89/BED.jl.git"}
+BioinfoTools = {rev = "main", url = "https://github.com/tdw-89/BioinfoTools.git"}
+GFF3 = {rev = "develop", url = "https://github.com/tdw-89/GFF3.jl.git"}
+YeoJohnsonTrans = {rev = "master", url = "https://github.com/tk3369/YeoJohnsonTrans.jl.git"}

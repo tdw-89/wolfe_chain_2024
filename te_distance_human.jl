@@ -8,9 +8,7 @@ using .MiscUtils
 
 only_h3k9me3 = false
 only_specific_type = true
-reload_peak_data = false
 only_numbered_chroms = true
-only_write_bed_files = true
 repeat_types = ["LINE", "SINE", "DNA", "Retroposon", "LTR", "TE"]
 repeat_type = repeat_types[end]
 
@@ -67,12 +65,12 @@ if repeat_type == "TE"
     total_te_bases = sum(te_df.End .- te_df.Start .+ 1)
     total_genome_bases = sum(values(human_ref.scaffolds) .|> s -> s.scaffold_end - s.scaffold_start + 1)
     
-    dna_te_perc = dna_bases / total_genome_bases * 100.0
-    rte_te_perc = rte_bases / total_genome_bases * 100.0
-    total_te_perc = total_te_bases / total_genome_bases * 100.0
-    println("DNA TE coverage: $dna_bases / $total_genome_bases * 100 = $dna_te_perc")
-    println("Retrotransposon TE coverage: $rte_bases / $total_genome_bases * 100 = $rte_te_perc")
-    println("Total TE coverage: $total_te_bases / $total_genome_bases * 100 = $total_te_perc")
+    # Sums of annotation lengths: bases covered by overlapping annotations are counted more than once
+    write_stats("te_coverage_human_annotations", DataFrame(
+        Class = ["DNA", "Retrotransposon", "All TEs"],
+        Bases = [dna_bases, rte_bases, total_te_bases],
+        GenomeBases = total_genome_bases,
+        Percent = [dna_bases, rte_bases, total_te_bases] ./ total_genome_bases .* 100))
 end
 
 # Filter to only include the main chromosomes
@@ -126,10 +124,6 @@ if repeat_type == "TE" && !only_h3k9me3
             println(file, "$(gene.scaffold.name)\t$(gene.gene_start)\t$(gene.gene_end)\t$(gene.id)\t0\t$(gene.strand)")
         end
     end
-end
-
-if only_write_bed_files
-    exit()
 end
 
 # Create the repeat distance df

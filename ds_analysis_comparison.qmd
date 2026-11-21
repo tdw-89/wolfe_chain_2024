@@ -44,10 +44,12 @@ expr_pairs_oldds = CSV.read(joinpath(data_dir, "filtered/paralog_expr_ds.csv"), 
 expr_pairs_newds = CSV.read(joinpath(data_dir, "filtered/paralog_expr_ds_new_ds.csv"), DataFrame)
 
 # MLR results
-mlr_old = CSV.read(joinpath(data_dir, "mlr_results_All_old_ds.csv"), DataFrame)
-mlr_new = CSV.read(joinpath(data_dir, "mlr_results_All_new_ds.csv"), DataFrame)
-mlr_stats_old = readlines(joinpath(data_dir, "mlr_stats_All_old_ds.txt"))
-mlr_stats_new = readlines(joinpath(data_dir, "mlr_stats_All_new_ds.txt"))
+mlr_old = CSV.read(joinpath(STATS_DIR, "mlr_All_ensembl.csv"), DataFrame)
+mlr_new = CSV.read(joinpath(STATS_DIR, "mlr_All_yn00.csv"), DataFrame)
+mlr_model_old = CSV.read(joinpath(STATS_DIR, "mlr_All_ensembl_model.csv"), DataFrame)
+mlr_model_new = CSV.read(joinpath(STATS_DIR, "mlr_All_yn00_model.csv"), DataFrame)
+mlr_vif_old = CSV.read(joinpath(STATS_DIR, "mlr_All_ensembl_vif.csv"), DataFrame)
+mlr_vif_new = CSV.read(joinpath(STATS_DIR, "mlr_All_yn00_vif.csv"), DataFrame)
 
 # Plot parameters
 const x_tick_font = attr(family="Times New Roman", size=26)
@@ -273,8 +275,12 @@ fig_atac.plot
 
 println("""| Predictor | Coefficient (Old) | Coefficient (New) | p-value (adj., Old) | p-value (adj., New) |
 |-|-|-|-|-|""")
-for i in 1:nrow(mlr_old)
-    @printf("| %s | %.2f | %.2f | %.2f | %.2f |\n", mlr_old.Predictor[i], mlr_old.Coef[i], mlr_new.Coef[i], mlr_old.pvalue_adj[i], mlr_new.pvalue_adj[i])
+# Match predictors by name: both CSVs are sorted by p-value, so row i is not the same predictor in each
+mlr_cmp = innerjoin(select(mlr_old, :Predictor, :Coef, :pvalue_adj), select(mlr_new, :Predictor, :Coef, :pvalue_adj),
+                    on = :Predictor, renamecols = "_old" => "_new")
+@assert nrow(mlr_cmp) == nrow(mlr_old) == nrow(mlr_new) "Old and new models have different predictors"
+for row in eachrow(sort(mlr_cmp, :Predictor))
+    @printf("| %s | %.2f | %.2f | %.2f | %.2f |\n", row.Predictor, row.Coef_old, row.Coef_new, row.pvalue_adj_old, row.pvalue_adj_new)
 end
 ```
 ## R² values for old vs. new dS models
@@ -282,13 +288,13 @@ end
 #| output: asis
 #| echo: false
 
-r2_old = split(mlr_stats_old[1], ":")[2] |> strip
-r2_new = split(mlr_stats_new[1], ":")[2] |> strip
+r2_old = only(mlr_model_old.Value[mlr_model_old.Statistic .== "R2"])
+r2_new = only(mlr_model_new.Value[mlr_model_new.Statistic .== "R2"])
 
 println("""| Model | R² |
 |-|-|
-| Old dS | $r2_old |
-| New dS | $r2_new |
+| Old dS | $(round(r2_old, digits=3)) |
+| New dS | $(round(r2_new, digits=3)) |
 """)
 ```
 ## VIF values for old vs. new dS models
@@ -296,32 +302,12 @@ println("""| Model | R² |
 #| output: asis
 #| echo: false
 
-# Rempve the headers
-mlr_stats_old = mlr_stats_old[4:end]
-mlr_stats_new = mlr_stats_new[4:end]
-
-# Extract VIF values
-vifs_old = map(mlr_stats_old) do line
-    parts = split(line, ":")
-    var = strip(parts[1])
-    vif = strip(parts[2])
-    return (var => vif)
-end
-vifs_new = map(mlr_stats_new) do line
-    parts = split(line, ":")
-    var = strip(parts[1])
-    vif = strip(parts[2])
-    return (var => vif)
-end
+vifs = innerjoin(mlr_vif_old, mlr_vif_new, on = :Predictor, renamecols = "_old" => "_new")
 println("""| Predictor | VIF (Old dS) | VIF (New dS) |
-|-|-|-|
-$(join(map(1:length(vifs_old)) do i
-    var = vifs_old[i][1]
-    vif_old = vifs_old[i][2]
-    vif_new = vifs_new[i][2]
-    "| $var | $vif_old | $vif_new |"
-end, "\n"))
-""")
+|-|-|-|""")
+for row in eachrow(vifs)
+    @printf("| %s | %.2f | %.2f |\n", row.Predictor, row.VIF_old, row.VIF_new)
+end
 ```
 
 # Gene expression comparison

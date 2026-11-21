@@ -5,8 +5,8 @@ using Serialization
 using JSON
 using Random
 
-TISSUE_TYPE = ARGS[1]  # Options: "All", "V", "M", "F"
-NEWDS = false #
+TISSUE_TYPE = stage_arg()  # "All", "V", "M" or "F"
+NEWDS = use_yn00()       # --yn00: YN00 dS instead of Ensembl Compara dS
 
 function get_sample_inds(tissue_type)
     if tissue_type == "All"
@@ -75,7 +75,7 @@ peak_files = [readdir(chip_peak_file_dir, join=true); readdir(atac_peak_file_dir
 peak_files = filter(fn -> endswith(fn, ".narrowPeak"), peak_files)
 peak_files = filter(fn -> !contains(fn, r"_S[AB]+_"), peak_files)
 
-# NOTE: If 'V' then there will be no ATAC data, if 'S'
+# There is no vegetative ATAC sample, so "V" has three marks
 if TISSUE_TYPE != "All"
     peak_files = filter(fn -> contains(fn, "_$TISSUE_TYPE"), peak_files)
 end
@@ -87,15 +87,14 @@ addtogenes!(ref_genome, peak_data)
 paralog_data = CSV.read(paralog_file, DataFrame)
 filter!(row -> row["dS"] <= 3, paralog_data)
 CSV.write("../../dicty_data/filtered/paralog_ds_filt.csv", paralog_data)
-##### |||| ##### |||| ##### |||| ##### |||| ##### |||| ##### |||| #####
 if NEWDS
-    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds.csv", DataFrame)
+    # The same pairs with YN00 dS (written by ds_dist_comparison.qmd)
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds_dicty.csv", DataFrame)
     paralog_data.dS = paralog_data.New_dS
     filter!(row -> !ismissing(row["dS"]) && row["dS"] <= 3, paralog_data)
 end
-##### |||| ##### |||| ##### |||| ##### |||| ##### |||| ##### |||| #####
 fig = plot(histogram(x=paralog_data.dS), Layout(title="Distribution of dS values for paralog pairs", xaxis_title="dS", yaxis_title="Count"))
-savefig(fig, "../../dicty_data/filtered/paralog_ds_hist_$(NEWDS ? "newds" : "").html")
+savefig(fig, "../../dicty_data/filtered/paralog_ds_hist$(NEWDS ? "_newds" : "").html")
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # paralog_data[findall(map(id -> !siginrange(get(ref_genome, id),  GeneRange(TSS(), TES(), -500, 500)), paralog_data.ParalogID)),:]
@@ -170,12 +169,19 @@ bar_plots, kw_tests, means_vecs =
         return_figs=true,
         horizontal=false,
         box_plots=true);
-eta_sq_vals = η².(kw_tests)
-
 p_vals_perm_cor = [get_cor(paralog_data, gene_range, sample_ind, ref_genome, global_mean.mean) for (sample_ind, gene_range, global_mean) in zip(sample_inds_vec,
                             [gene_range for i in 1:length(sample_inds_vec)],
                              global_means_vec)]
-adj_p_vals_perm_cor = adjust([pair[1] for pair in p_vals_perm_cor], BenjaminiHochberg())
-adj_p_vals_kw = adjust(pvalue.(kw_tests), BenjaminiHochberg())
 serialize(joinpath(ser_data_dir, "bar_plots_dS_$TISSUE_TYPE$(NEWDS ? "_newds" : "").jls"), bar_plots)
 serialize_to_json(joinpath(ser_data_dir, "means_vecs_ds_$TISSUE_TYPE$(NEWDS ? "_newds" : "").json"), means_vecs)
+
+# Table 2 (dS rows): permutation test of the Pearson correlation between pair-average coverage and dS,
+# and Kruskal–Wallis test across dS deciles; BH-adjusted across marks
+mark_names = ["H3K27ac", "H3K4me3", "H3K9me3", "ATAC"][eachindex(sample_inds_vec)]
+stats = DataFrame([kw_row(mark, test) for (mark, test) in zip(mark_names, kw_tests)])
+rename!(stats, :Test => :Mark, :H => :KW_H, :df => :KW_df, :N => :KW_N, :p => :KW_p)
+stats.KW_p_adj = adjust(stats.KW_p, BenjaminiHochberg())
+stats.r = [pair[2] for pair in p_vals_perm_cor]
+stats.r_p = [pair[1] for pair in p_vals_perm_cor]
+stats.r_p_adj = adjust(stats.r_p, BenjaminiHochberg())
+write_stats("enrichment_vs_ds_$TISSUE_TYPE$(NEWDS ? "_yn00" : "")", stats)

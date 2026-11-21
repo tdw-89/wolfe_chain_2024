@@ -45,7 +45,9 @@ for chrom in sig_union.chroms
         push!(peak_bed, (chrom_name, peak_start, length(signal)))
     end
 end
-CSV.write("../../dicty_data/", peak_bed, delim='\t', header=false)
+# 3-column BED of the V/M/F H3K9me3 union (was written to the directory path). The existing
+# te_density/h3k9me3_union.narrowPeak has this format; h3k9me3_te_dist.py reads its sorted/merged copy.
+CSV.write("../../dicty_data/te_density/h3k9me3_union.narrowPeak", peak_bed, delim='\t', header=false)
 
 # Create bed file for non-TE coding genes
 gene_bed = DataFrame(:chrom=>String[], :start=>Int[], :end=>Int[])

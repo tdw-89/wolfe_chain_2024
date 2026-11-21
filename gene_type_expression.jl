@@ -2,8 +2,6 @@ include("prelude.jl")
 
 using .RepeatUtils
 
-plot_save_dir = "../../dicty_data/saved_figures/"
-
 # Paralog data
 paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
 singleton_file = "../../dicty_data/filtered/singleton_filt.tsv"
@@ -23,7 +21,10 @@ chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_
 
 # Load genome data
 ref_genome = loadgenome(gff_source, chrom_lengths_file)
-addexpression!(ref_genome, CSV.read(expr_data_file, DataFrame))
+expr_data = CSV.read(expr_data_file, DataFrame)
+rename!(expr_data, ["GeneID", "V", "S", "M", "F"])
+select!(expr_data, ["GeneID", "V", "M", "F"])  # stages with ChIP-seq data
+addexpression!(ref_genome, expr_data)
 paralog_df = CSV.read(paralog_file, DataFrame)
 singleton_df = CSV.read(singleton_file, DataFrame)
 
@@ -33,38 +34,13 @@ non_te_gene_list = [gene for gene in ref_genome.genes[2] if gene.id ∉ te_ids]
 duplicates = [gene for gene in non_te_gene_list if gene.id in paralog_df.GeneID || gene.id in paralog_df.ParalogID]
 singletons = [gene for gene in non_te_gene_list if gene.id in singleton_df.GeneID]
 
-te_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in te_genes_list], name = "TE genes", color="blue")
-non_te_box = box(y = [isempty(gene.rnas) ? log2(0.5) : log2(mean(gene.rnas[1].expression) + 0.5) for gene in non_te_gene_list], name = "Non-TE genes", color="red")
-
-layout = Layout(yaxis=attr(title="log2(TPM + 0.5)", 
-                           titlefont=attr(family = "Times New Roman", 
-                           size=30),
-                           gridcolor="lightgray",
-                           gridwidth=1.5), 
-                xaxis=attr(title="Gene type",
-                           titlefont=attr(family = "Times New Roman", 
-                           size=30),
-                           gridcolor="lightgray",
-                           gridwidth=1.5),
-                plot_bgcolor="white",
-                barmode="group",
-                gridcolor="lightgray",
-                gridwidth=1.5)
-fig = plot([te_box, non_te_box], layout)
-
-savefig(fig, joinpath(plot_save_dir, "gene_type_expression.html"))
-
 non_te_expression = [mean(gene.rnas[1].expression) for gene in non_te_gene_list if length(gene.rnas) > 0]
 te_expression = [mean(gene.rnas[1].expression) for gene in te_genes_list if length(gene.rnas) > 0]
-test_res = MannWhitneyUTest(non_te_expression, te_expression)
-p_val = pvalue(test_res)
-Z = (test_res.U - test_res.mu) / test_res.sigma |> abs
-N = test_res.nx + test_res.ny
-r = Z / √N
 
-#=
-𝑝 value = 8.723881780776673e-76
-Z = 43.140803659274546
-N = 11803
-r = 0.3970928137525126
-=#
+# Supplementary figure S2: expression of non-TE vs TE genes, log2(mean TPM over V/M/F + 0.5)
+write_stats("te_gene_expression", DataFrame([mwu_row("Non-TE genes vs TE genes, log2(TPM + 0.5)",
+    log2.(non_te_expression .+ 0.5), log2.(te_expression .+ 0.5))]))
+
+fig = plot([fig_box(log2.(te_expression .+ 0.5), "TE genes", BLUE), fig_box(log2.(non_te_expression .+ 0.5), "Non-TE genes", RED)],
+           fig_layout(yaxis=fig_axis(title="log<sub>2</sub>(TPM + 0.5)"), xaxis=fig_axis(showgrid=false)))
+save_figure(fig, "figS02"; width=700, height=500)

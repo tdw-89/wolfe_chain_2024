@@ -3,42 +3,14 @@ include("prelude.jl")
 using .EnrichmentUtils
 using .RepeatUtils
 using CategoricalArrays
-using MultipleTesting
 
-# Collect test results for summary table at end
-test_results = DataFrame(
-    Test=String[],
-    PValue=Float64[],
-    TestStatistic=Float64[],
-    StatisticSymbol=String[],
-    Description=String[]
-)
-
-function get_effect_size(test)
-    if hasproperty(test, :U)
-        U = test.U
-        Z = (U - test.mu) / test.sigma |> abs
-        N = test.ny + test.nx
-        r = Z / √N
-        return (r, "r")
-    elseif hasproperty(test, :ω)
-        return (Float64(getproperty(test, :ω)), "ω")  # odds ratio
-    else
-        error("Unsupported test type for statistic extraction: $(typeof(test))")
-    end
-end
-
-function record_test!(results::DataFrame, label::AbstractString, test, description::AbstractString)
-    stat_val, stat_sym = get_effect_size(test)
-    push!(results, (String(label), Float64(pvalue(test)), stat_val, stat_sym, String(description)))
-    return test
-end
+# Mann–Whitney U tests of total TE density (upstream + gene body + downstream), one row each
+test_results = DataFrame()
 
 # Duplicate filtering parameter:
 ds_threshold = 3
 
 # Peak files
-# chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 chip_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_1_ensembl52/"
 atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 
@@ -46,10 +18,7 @@ atac_peak_file_dir = "../../dicty_data/wang_et_al/processed/run_2_ensembl52/"
 gff_source = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/Dictyostelium_discoideum.dicty_2.7.52.gff3"
 chrom_lengths_file = "../../dicty_data/AX4/genome_ver_2_7/ensembl_52/chromosome_lengths_ensembl.txt"
 paralog_file = "../../dicty_data/filtered/paralog_filt.tsv"
-final_gene_list = "../../dicty_data/filtered/final_gene_list.txt"
-te_dist_file = "../../dicty_data/te_distance.csv"
 te_density_file = "../../dicty_data/te_density/te_density.csv"
-te_id_file = "blacklists/ensembl_te_ids_with_predicted.tsv"
 
 font_family = "Times New Roman"
 box_plt_blue(data, name) = box(y=data, 
@@ -83,16 +52,8 @@ te_density_df = CSV.read(te_density_file, DataFrame)
 rename!(te_density_df, :Gene_ID => :GeneID)
 te_density_df.TotalDensity = te_density_df.Upstream .+ te_density_df.Internal .+ te_density_df.Downstream
 
-# Load TE IDs
-te_ids = CSV.read(te_id_file, DataFrame)
-
 # Load the paralog data:
 paralog_data = CSV.read(paralog_file, DataFrame)
-
-# Load final filtered gene list:
-final_gene_list = open(final_gene_list) do file
-    readlines(file)
-end
 
 # Filter the paralogs:
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
@@ -126,40 +87,31 @@ te_densities = te_density_df.TotalDensity[map(id -> id ∉ paralog_ids && id ∉
 te_densities_dups = te_density_df.TotalDensity[map(id -> id ∈ paralog_ids && id ∉ ids_with_k9me3, te_density_df.GeneID)]
 fig = plot([box_plt_blue(te_densities, "TE Density"), box_plt_red(te_densities_dups, "TE Density (Paralogs)")],
       box_layout)
-display(fig)
+isinteractive() && display(fig)
 savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_density_nonparalog_vs_paralog.html"))
 
-# Are the TE density distributions significantly different between non-paralogs and paralogs? (A: Yes, p value <1e-06)
-record_test!(test_results,
-    "MannWhitneyUTest (TE density; non-paralog vs paralog)",
-    MannWhitneyUTest(te_densities, te_densities_dups),
-    "Mann–Whitney U test: compares TE-density distributions between non-paralog and paralog genes.")
+push!(test_results, mwu_row("Non-paralogs vs paralogs (both without H3K9me3)", te_densities, te_densities_dups))
 
 # What is the distribution of TE densities by H3K9me3 status?
 te_densities_k9me3 = te_density_df.TotalDensity[map(id -> id ∈ ids_with_k9me3 && id ∉ paralog_ids, te_density_df.GeneID)]
 te_densities_no_k9me3 = te_density_df.TotalDensity[map(id -> id ∉ ids_with_k9me3 && id ∉ paralog_ids, te_density_df.GeneID)]
 
 fig = plot([box_plt_blue(te_densities_k9me3, "With H3K9me3"), box_plt_red(te_densities_no_k9me3, "Without H3K9me3")], box_layout)
-display(fig)
+isinteractive() && display(fig)
 savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_density_by_k9me3_status.html"))
-record_test!(test_results,
-    "MannWhitneyUTest (TE density; non-paralogs with vs without H3K9me3)",
-    MannWhitneyUTest(te_densities_k9me3, te_densities_no_k9me3),
-    "Mann–Whitney U test on TE density: compares non-paralog genes with H3K9me3 vs without.")
-
-# What is the distribution of distance to the nearest TE
-
+save_figure(plot([fig_box(te_densities_k9me3, "With H3K9me3", BLUE), fig_box(te_densities_no_k9me3, "Without H3K9me3", RED)],
+                 fig_layout(yaxis=fig_axis(title="TE density"), xaxis=fig_axis(showgrid=false))), "figS06"; width=700, height=500)
+push!(test_results, mwu_row("Non-paralogs with vs without H3K9me3", te_densities_k9me3, te_densities_no_k9me3))
 
 te_densities_k9me3_dups = te_density_df.TotalDensity[map(id -> id ∈ ids_with_k9me3 && id ∈ paralog_ids, te_density_df.GeneID)]
 te_densities_no_k9me3_dups = te_density_df.TotalDensity[map(id -> !(id ∈ ids_with_k9me3) && id ∈ paralog_ids, te_density_df.GeneID)]
 
 fig = plot([box_plt_blue(te_densities_k9me3_dups, "With H3K9me3 (Paralogs)"), box_plt_red(te_densities_no_k9me3_dups, "Without H3K9me3 (Paralogs)")], box_layout)
-display(fig)
+isinteractive() && display(fig)
 savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_density_paralogs_by_k9me3_status.html"))
-record_test!(test_results,
-    "MannWhitneyUTest (TE density; paralogs with vs without H3K9me3)",
-    MannWhitneyUTest(te_densities_k9me3_dups, te_densities_no_k9me3_dups),
-    "Mann–Whitney U test on TE density: compares paralogs with H3K9me3 vs without.")
+save_figure(plot([fig_box(te_densities_k9me3_dups, "With H3K9me3", BLUE), fig_box(te_densities_no_k9me3_dups, "Without H3K9me3", RED)],
+                 fig_layout(yaxis=fig_axis(title="TE density"), xaxis=fig_axis(showgrid=false))), "figS11"; width=700, height=500)
+push!(test_results, mwu_row("Paralogs with vs without H3K9me3", te_densities_k9me3_dups, te_densities_no_k9me3_dups))
 
 # Low dS paralogs
 te_densities_low_ds = te_density_df.TotalDensity[map(id -> id ∈ paralog_ids_low_ds, te_density_df.GeneID)]
@@ -167,16 +119,8 @@ te_densities_low_ds_k9me3 = te_density_df.TotalDensity[map(id -> id ∈ paralog_
 te_densities_low_ds_no_k9me3 = te_density_df.TotalDensity[map(id -> id ∈ paralog_ids_low_ds && id ∉ ids_with_k9me3, te_density_df.GeneID)]
 
 fig = plot([box_plt_blue(te_densities_low_ds_k9me3, "With H3K9me3"), box_plt_red(te_densities_low_ds_no_k9me3, "Without H3K9me3")], box_layout)
-display(fig)
+isinteractive() && display(fig)
 savefig(fig, joinpath(@__DIR__, "../../dicty_data", "te_density_low_ds_paralogs_by_k9me3_status.html"))
-record_test!(test_results,
-    "MannWhitneyUTest (TE density; low ds paralogs with vs without H3K9me3)",
-    MannWhitneyUTest(te_densities_low_ds_k9me3, te_densities_low_ds_no_k9me3),
-    "Mann–Whitney U test on TE density: compares low ds paralogs with H3K9me3 vs without."
-)
-test_results.PValueAdjusted = adjust(test_results.PValue, BenjaminiHochberg())
-# --- Summary table of hypothesis tests ---
-display(test_results)
-
-out_path = joinpath(@__DIR__, "../../dicty_data", "test_results_enrichment_vs_te_density.csv")
-CSV.write(out_path, test_results)
+push!(test_results, mwu_row("Low-dS paralogs with vs without H3K9me3", te_densities_low_ds_k9me3, te_densities_low_ds_no_k9me3))
+test_results.p_adj = adjust(test_results.p, BenjaminiHochberg())
+write_stats("te_density_tests", test_results)

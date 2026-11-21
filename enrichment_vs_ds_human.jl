@@ -7,7 +7,8 @@ using JSON
 using .EnrichmentUtils
 
 reload_peak_data = false
-NEWDS = false #
+NEWDS = use_yn00()  # --yn00: YN00 dS instead of Ensembl Compara dS
+sfx = NEWDS ? "_newds" : ""
 
 # function for serializing enrichment vectors to JSON for use in R
 function serialize_to_json(file_path, vecs)
@@ -64,7 +65,7 @@ else
 end
 
 filter!(row -> row.dS <= 3, paralog_data)
-CSV.write("../../dicty_data/paralog_data_human.csv", paralog_data)
+CSV.write("../../dicty_data/paralog_data_human$sfx.csv", paralog_data)
 select!(paralog_data, ["GeneID", "ParalogID", "dS"])
 
 # Get the global signal distribution for H3K9me3 from TSS-500:TSS+500 for all coding genes
@@ -96,7 +97,7 @@ tss_enrich = plot_enrich_region(paralog_data,
                                 z_max=z_max,
                                 return_figs=true)
 
-serialize("../../dicty_data/julia_serialized/human_tss_enrich_plots_dS.jls", tss_enrich)
+serialize("../../dicty_data/julia_serialized/human_tss_enrich_plots_dS$sfx.jls", tss_enrich)
 
 body_enrich = plot_enrich_percent(paralog_data,
                     human_ref.genes[2],
@@ -106,7 +107,7 @@ body_enrich = plot_enrich_percent(paralog_data,
                     z_min=z_min,
                     z_max=z_max,
                     return_figs=true)
-serialize("../../dicty_data/julia_serialized/human_body_enrich_plots_dS.jls", body_enrich)
+serialize("../../dicty_data/julia_serialized/human_body_enrich_plots_dS$sfx.jls", body_enrich)
 
 tes_enrich = plot_enrich_region(paralog_data,
                                 human_ref.genes[2],
@@ -117,7 +118,7 @@ tes_enrich = plot_enrich_region(paralog_data,
                                 z_min=z_min,
                                 z_max=z_max,
                                 return_figs=true)
-serialize("../../dicty_data/julia_serialized/human_tes_enrich_plots_dS.jls", tes_enrich)
+serialize("../../dicty_data/julia_serialized/human_tes_enrich_plots_dS$sfx.jls", tes_enrich)
 
 bar_plots, kw_test, means_vecs = plot_bar(
     paralog_data,
@@ -130,15 +131,21 @@ bar_plots, kw_test, means_vecs = plot_bar(
     return_figs=true,
     horizontal=false)
 
-eta_sq_vals = η².(kw_test)
-
 p_vals_perm_cor = get_cor(
     paralog_data,
     GeneRange(TSS(),TES(), -500, 500),
-    [1:16...],
+    sample_inds,
     human_ref,
     global_dist.mean
     )
 
-serialize("../../dicty_data/julia_serialized/human_bar_plots_dS.jls", bar_plots)
-serialize_to_json("../../dicty_data/julia_serialized/means_vecs_dS_human.json", means_vecs)
+serialize("../../dicty_data/julia_serialized/human_bar_plots_dS$sfx.jls", bar_plots)
+serialize_to_json("../../dicty_data/julia_serialized/means_vecs_dS_human$sfx.json", means_vecs)
+
+# H3K9me3 vs dS in human paralogs: Kruskal–Wallis across dS deciles and permutation test of the Pearson
+# correlation between pair-average coverage and dS
+stats = DataFrame([kw_row("H3K9me3", only(kw_test))])
+rename!(stats, :Test => :Mark, :H => :KW_H, :df => :KW_df, :N => :KW_N, :p => :KW_p)
+stats.r = [p_vals_perm_cor[2]]
+stats.r_p = [p_vals_perm_cor[1]]
+write_stats("enrichment_vs_ds_human$sfx", stats)

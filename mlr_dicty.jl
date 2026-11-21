@@ -8,16 +8,17 @@ using GLM
 using LinearAlgebra
 using MultivariateStats
 using NaturalSort
+using Printf
 
 const ϵ = 0.001
-NEWDS = false #
+NEWDS = use_yn00()  # --yn00: YN00 dS instead of Ensembl Compara dS
 
 # Helper functions
 function normalize_expression(df::DataFrame)
     num_obs = nrow(df)
     expr_cols = names(df)[2:end]
     pool_expr = reduce(vcat, [df[!, col] for col in expr_cols])
-    pool_norm = normalize_yj(pool_expr)
+    pool_norm = normalize_yj(Float64.(pool_expr))
     expr_mat = reshape(pool_norm, num_obs, length(expr_cols))
     new_df = DataFrame(expr_mat, Symbol.(expr_cols))
     insertcols!(new_df, 1, :GeneID => df.GeneID)
@@ -53,7 +54,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "V" # "F" "M" "V" or "All"
+life_cycle = stage_arg()  # "All", "V", "M" or "F"
 
 gene_range = GeneRange(TSS(), TES(), -500, 500)
 
@@ -91,8 +92,9 @@ if life_cycle != "All"
     select!(expr_data, ["GeneID", life_cycle])
     expr_data[!, :Avg] = expr_data[!, life_cycle]
     select!(expr_data, ["GeneID", "Avg"])
-    expr_data.Avg = normalize_yj(expr_data.Avg)
+    expr_data.Avg = normalize_yj(Float64.(expr_data.Avg))
 else
+    select!(expr_data, ["GeneID", "V", "M", "F"])  # stages with ChIP-seq data
     expr_data = normalize_expression(expr_data)
     insertcols!(expr_data, :Avg => mean.(eachrow(expr_data[:, 2:end])))
     select!(expr_data, ["GeneID", "Avg"])
@@ -112,7 +114,8 @@ peak_data = binpeaks(peak_files, chrom_lengths_file)
 # Load paralog
 paralog_data = CSV.read(paralog_file, DataFrame)
 if NEWDS
-    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds.csv", DataFrame)
+    # The same pairs with YN00 dS (written by ds_dist_comparison.qmd)
+    paralog_data = CSV.read("../../dicty_data/old_pairs_with_new_ds_dicty.csv", DataFrame)
     paralog_data.dS = paralog_data.New_dS
     filter!(row -> !ismissing(row["dS"]), paralog_data)
 end
@@ -222,26 +225,33 @@ full_df.ParalogDist[isfinite.(full_df.ParalogDist)] = normalize_yj(full_df.Paral
 full_df.ParalogDist[isinf.(full_df.ParalogDist)] .= 0
 full_df.dS = normalize_yj(Float64.(full_df.dS))
 
+# There is no vegetative ATAC sample
+if life_cycle == "V"
+    select!(full_df, Not([:ATAC, :HasATAC]))
+end
+
 # calculate the VIFs by calculating the correlation matrix and taking the diagonal of its inverse
-mat = Matrix(full_df[:,4:end])
+predictor_names = names(full_df)[4:end]
+mat = Matrix(full_df[:, predictor_names])
 cor_mat = cor(mat)
 inv_cor_mat = inv(cor_mat)
 vif_values = diag(inv_cor_mat)
 
 # Create a heatmap of the correlation matrix, with values annotated
-var_names = [
-    "Average Expression",
-    "H3K27ac (coverage)",
-    "H3K4me3 (coverage)",
-    "H3K9me3 (coverage)",
-    "ATAC (coverage)",
-    "Paralog Distance",
-    "H3K27ac (presence)",
-    "H3K4me3 (presence)",
-    "H3K9me3 (presence)",
-    "ATAC (presence)",
-    "Same Chromosome"
-]
+var_labels = Dict(
+    "AvgExpr" => "Average Expression",
+    "H3K27ac" => "H3K27ac (coverage)",
+    "H3K4me3" => "H3K4me3 (coverage)",
+    "H3K9me3" => "H3K9me3 (coverage)",
+    "ATAC" => "ATAC (coverage)",
+    "ParalogDist" => "Paralog Distance",
+    "HasH3K27ac" => "H3K27ac (presence)",
+    "HasH3K4me3" => "H3K4me3 (presence)",
+    "HasH3K9me3" => "H3K9me3 (presence)",
+    "HasATAC" => "ATAC (presence)",
+    "SameChrom" => "Same Chromosome"
+)
+var_names = [var_labels[name] for name in predictor_names]
 heatmap_trace = heatmap(
     z=abs.(cor_mat),
     x=var_names,
@@ -259,8 +269,20 @@ heatmap_layout = Layout(
 )
 
 heatmap_fig = plot(heatmap_trace, heatmap_layout)
-display(heatmap_fig)
-savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle).html"))
+isinteractive() && display(heatmap_fig)
+savefig(heatmap_fig, joinpath(data_dir, "correlation_heatmap_$(life_cycle)$(NEWDS ? "_yn00" : "").html"))
+if life_cycle == "All" && !NEWDS  # Figure S14
+    # Each cell is drawn as a 20x20 block so PDF viewers do not blur the (image-embedded) heatmap
+    k, up = length(var_names), 20
+    centres = collect(((1:k) .- 0.5) .* up)
+    values = [attr(x=centres[j], y=centres[i], text=@sprintf("%.2f", abs(cor_mat[i, j])), showarrow=false,
+                   font=attr(size=12, color=abs(cor_mat[i, j]) > 0.6 ? "black" : "white")) for i in 1:k for j in 1:k]
+    save_figure(plot(heatmap(z=kron(abs.(cor_mat), ones(up, up)), colorscale="Viridis", zmin=0, zmax=1,
+                             colorbar=attr(title=attr(text="|r|", side="right"), thickness=12, outlinewidth=0)),
+                     fig_layout(xaxis=attr(tickvals=centres, ticktext=var_names, tickangle=-45, automargin=true),
+                                yaxis=attr(tickvals=centres, ticktext=var_names, autorange="reversed", automargin=true),
+                                annotations=values, margin=attr(l=20, r=20, t=20, b=20))), "figS14"; width=900, height=800)
+end
 
 fml = life_cycle == "V" ?
     @formula(
@@ -297,16 +319,15 @@ f_test_result = ftest(null_model.model, mlr_model.model)
 mlr_table = DataFrame(coeftable(mlr_model))
 rename!(mlr_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
 r_squared = r²(mlr_model)
-valid_p_vals = findall(x -> !isnan(x), mlr_table.pvalue)
-invalid_p_vals = setdiff(1:nrow(mlr_table), valid_p_vals)
+# BH adjustment over the predictors; the intercept is not one of the hypotheses tested
+valid_p_vals = findall(i -> !isnan(mlr_table.pvalue[i]) && mlr_table.Predictor[i] != "(Intercept)", 1:nrow(mlr_table))
 mlr_table.pvalue_adj = fill(NaN, nrow(mlr_table))
 mlr_table.pvalue_adj[valid_p_vals] = adjust(mlr_table[!, :pvalue][valid_p_vals], BenjaminiHochberg())
 
 sort!(mlr_table, :pvalue_adj)
-CSV.write(joinpath(data_dir, "mlr_results_$(life_cycle)_$(NEWDS ? "new_ds" : "old_ds").csv"), mlr_table)
-stats_file = open(joinpath(data_dir, "mlr_stats_$(life_cycle)_$(NEWDS ? "new_ds" : "old_ds").txt"), "w")
-write(stats_file, "r²: $r_squared\n\nVIF Values:\n")
-for (i, col_name) in enumerate(names(full_df)[4:end])
-    write(stats_file, "$col_name: $(vif_values[i])\n")
-end
-close(stats_file)
+model_name = "mlr_$(life_cycle)_$(NEWDS ? "yn00" : "ensembl")"
+write_stats(model_name, mlr_table)
+write_stats("$(model_name)_model", DataFrame(
+    Statistic = ["N", "R2", "F", "F_p"],
+    Value = [nobs(mlr_model), r_squared, f_test_result.fstat[2], f_test_result.pval[2]]))
+write_stats("$(model_name)_vif", DataFrame(Predictor = predictor_names, VIF = vif_values))

@@ -10,8 +10,6 @@ function avg_input_count(gene_id::S, ref_genome::RefGenome, input_counts::Sample
     gene_end = gene.gene_end
     chrom_ind = findfirst(chrom -> chrom.name == gene_chrom, input_counts.chroms)
 
-    # return isnothing(chrom_ind) # DEBUG REMOVE
-
     return mean(input_counts.chroms[chrom_ind].signal[gene_start:gene_end])
 end
 
@@ -36,7 +34,7 @@ input_count_experiment = deserialize("../../dicty_data/julia_serialized/input_co
 input_counts = only(input_count_experiment.samples)
 
 # Load a reference genome
-ref_genome = loadgenome(gff_file_dir, chrom_lengths_file)
+ref_genome = loadgenome(gff_source, chrom_lengths_file)
 
 # Calculate average input read count for singletons
 singleton_avg = mean([avg_input_count(String(gene_id), ref_genome, input_counts) for gene_id in singleton_list if gene_id in ref_genome.genes[1]])

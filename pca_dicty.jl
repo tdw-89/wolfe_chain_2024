@@ -41,8 +41,7 @@ function logit_z(vec::Vector{Float64})
 end
 
 data_dir = "../../dicty_data/"
-life_cycle = "All" # "F" "M" or "All"
-PCA_analysis = true
+life_cycle = stage_arg()  # "All", "M" or "F" (no vegetative ATAC sample)
 
 k27ac_upstream, k4me3_upstream, k9me3_upstream, atac_upstream = -500, -500, -500, -500
 k27ac_downstream, k4me3_downstream, k9me3_downstream, atac_downstream = 500, 500, 500, 500
@@ -282,7 +281,7 @@ biplot_layout = Layout(
 )
 
 biplot_fig = plot(biplot_traces, biplot_layout)
-display(biplot_fig)
+isinteractive() && display(biplot_fig)
 savefig(biplot_fig, joinpath(data_dir, "pca_biplot_$(life_cycle).html"))
 
 #--------------- MLR on PCA components ---------------#
@@ -302,8 +301,8 @@ mlr_pca_model = lm(@formula(dS ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 +
 mlr_pca_table = DataFrame(coeftable(mlr_pca_model))
 r2_squared_pca = r²(mlr_pca_model)
 rename!(mlr_pca_table, [:Predictor, :Coef, :StdErr, :tvalue, :pvalue, :Lower95CI, :Upper95CI])
+mlr_pca_table = mlr_pca_table[2:end, :]  # Remove the intercept, which is not one of the hypotheses tested
 mlr_pca_table.pvalue_adj = adjust(mlr_pca_table[!, :pvalue], BenjaminiHochberg())
-mlr_pca_table = mlr_pca_table[2:end, :]  # Remove intercept row (p value of 1)
 mlr_pca_table.prop_var_explained = pca_model.prinvars ./ pca_model.tprinvar
 
 # For each of the original input variables, add a column with the loading on each PC
@@ -311,7 +310,12 @@ for (i, var_name) in enumerate(variable_names)
     mlr_pca_table[!, Symbol(var_name * "_loading")] = loadings_matrix[i, :]
 end
 
-CSV.write(joinpath(data_dir, "mlr_pca_results_$(life_cycle).csv"), mlr_pca_table)
+write_stats("pca_regression_$(life_cycle)", mlr_pca_table)
+null_pca_model = lm(@formula(dS ~ 1), pca_df)
+f_test_pca = ftest(null_pca_model.model, mlr_pca_model.model)
+write_stats("pca_regression_$(life_cycle)_model", DataFrame(
+    Statistic = ["N", "R2", "F", "F_p"],
+    Value = [nobs(mlr_pca_model), r2_squared_pca, f_test_pca.fstat[2], f_test_pca.pval[2]]))
 
 # Plot results:
 plot_table = select(mlr_pca_table, [1, 2, 8:ncol(mlr_pca_table)...])
@@ -325,6 +329,20 @@ end
 #--------------- Stacked Bar Chart ---------------#
 # Get loading column names (columns 5 to end)
 loading_col_names = names(plot_table)[5:end]
+
+var_labels = Dict(
+    "AvgExpr" => "Expression (pair average)",
+    "H3K27ac" => "H3K27ac (coverage)",
+    "H3K4me3" => "H3K4me3 (coverage)",
+    "H3K9me3" => "H3K9me3 (coverage)",
+    "ATAC" => "ATAC (coverage)",
+    "ParalogDist" => "Paralog pair distance",
+    "HasH3K27ac" => "H3K27ac (presence)",
+    "HasH3K4me3" => "H3K4me3 (presence)",
+    "HasH3K9me3" => "H3K9me3 (presence)",
+    "HasATAC" => "ATAC (presence)",
+    "SameChrom" => "Same chromosome"
+)
 
 # Color mapping: related variables (coverage + indicator) share the same color
 color_map = Dict(
@@ -353,7 +371,7 @@ for (j, col_name) in enumerate(loading_col_names)
     push!(bar_traces, bar(
         x = plot_table.Predictor,
         y = plot_table[!, col_name],
-        name = display_name,
+        name = get(var_labels, display_name, display_name),
         marker = attr(color = marker_color),
         hovertemplate = "%{x}<br>$display_name: %{y:.2f}%<extra></extra>"
     ))
@@ -392,5 +410,18 @@ bar_layout = Layout(
 )
 
 bar_fig = plot(bar_traces, bar_layout)
-display(bar_fig)
+isinteractive() && display(bar_fig)
 savefig(bar_fig, joinpath(data_dir, "pca_contributions_stacked_$(life_cycle).html"))
+
+# Figures S15-S17
+stage_title = Dict("All" => "All stages", "F" => "Fruiting body", "M" => "Mound")[life_cycle]
+fig_name = Dict("All" => "figS15", "F" => "figS16", "M" => "figS17")[life_cycle]
+pc_numbers = replace.(plot_table.Predictor, "PC" => "")
+for t in bar_traces
+    t[:x] = pc_numbers
+    delete!(t.fields, :hovertemplate)
+end
+save_figure(plot(bar_traces, fig_layout(barmode="stack", showlegend=true, legend=attr(x=1.02, y=1, xanchor="left"),
+        title=attr(text="$stage_title, R<sup>2</sup> = $(round(r2_squared_pca, digits=3))", x=0.4, xanchor="center"),
+        xaxis=fig_axis(title="Principal component", showgrid=false), yaxis=fig_axis(title="Proportion of variance (%)"),
+        margin=attr(l=70, r=20, t=60, b=60))), fig_name; width=1100, height=550)
